@@ -57,38 +57,51 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+      backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final heroHeight = (constraints.maxHeight * 0.45).clamp(320.0, 390.0);
-            return SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: SizedBox(
-                height: heroHeight + 470,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _HeroHeader(width: constraints.maxWidth, height: heroHeight),
-                    Positioned(
-                      top: heroHeight - 30,
-                      left: 0,
-                      right: 0,
-                      child: _LoginCard(
-                        formKey: _formKey,
-                        emailController: _emailController,
-                        passwordController: _passwordController,
-                        obscurePassword: _obscurePassword,
-                        isLoading: _isLoading,
-                        onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                        onLogin: _login,
-                        onForgotPassword: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
-                        onRegister: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            return SizedBox(
+              height: heroHeight + 470,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _HeroHeader(width: constraints.maxWidth, height: heroHeight),
+                  Positioned(
+                    top: heroHeight - 30,
+                    left: 0,
+                    right: 0,
+                    child: _LoginCard(
+                    formKey: _formKey,
+                    emailController: _emailController,
+                    passwordController: _passwordController,
+                    obscurePassword: _obscurePassword,
+                    isLoading: _isLoading,
+                    onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onLogin: _login,
+                    onForgotPassword: () => Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, animation, secondaryAnimation) => const ForgotPasswordScreen(),
+                        transitionsBuilder: (_, animation, secondaryAnimation, child) => child,
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
                       ),
                     ),
-                  ],
-                ),
+                    onRegister: () => Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, animation, secondaryAnimation) => const RegisterScreen(),
+                        transitionsBuilder: (_, animation, secondaryAnimation, child) => child,
+                        reverseTransitionDuration: Duration.zero,
+                        transitionDuration: Duration.zero,
+                      ),
+                    ),
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -225,7 +238,15 @@ class _LoginCard extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   const Text("Don't have an account? ", style: TextStyle(fontSize: 11, color: Color(0xFF1A1A1A))),
-                  GestureDetector(onTap: onRegister, child: const Text('Register', style: TextStyle(fontSize: 11, color: AppColors.orange, fontWeight: FontWeight.w800))),
+                  TextButton(
+                    onPressed: onRegister,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Register', style: TextStyle(fontSize: 11, color: AppColors.orange, fontWeight: FontWeight.w800)),
+                  ),
                 ],
               ),
             ),
