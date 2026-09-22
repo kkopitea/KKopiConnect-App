@@ -43,7 +43,9 @@ class NotificationsScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (Navigator.canPop(context)) Navigator.pop(context);
+                        },
                         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -163,20 +165,6 @@ class NotificationsScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _navItem(Icons.home_rounded, 'Home', false),
-                      _navItem(Icons.category_rounded, 'Categories', false),
-                      _navItem(Icons.shopping_bag_outlined, 'Cart', false),
-                      _navItem(Icons.receipt_long_rounded, 'Orders', false),
-                      _navItem(Icons.settings_rounded, 'Settings', false),
-                    ],
-                  ),
-                ),
                 ],
               ),
             ),
@@ -186,20 +174,4 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
-  static Widget _navItem(IconData icon, String label, bool active) {
-    return Column(
-      children: [
-        Icon(icon, color: active ? AppColors.orange : AppColors.iconMuted, size: 22),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: active ? AppColors.orange : AppColors.iconMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
 }

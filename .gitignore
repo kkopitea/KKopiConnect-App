@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Firebase Admin SDK credentials
+**/*firebase-adminsdk*.json
+**/PrivateKeyDatabase*.json
+
 # Symbolication related
 app.*.symbols
 

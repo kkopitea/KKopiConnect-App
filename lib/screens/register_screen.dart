@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -51,6 +52,15 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         password: _passwordController.text,
       );
       await credential.user?.updateDisplayName(_nameController.text.trim());
+      final user = credential.user;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': _emailController.text.trim(),
+          'isActive': true,
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+        });
+      }
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,

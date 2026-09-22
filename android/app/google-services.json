@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "964129969682",
-    "project_id": "kkopiconnect",
-    "storage_bucket": "kkopiconnect.firebasestorage.app"
+    "project_number": "365637024668",
+    "project_id": "kkopiconnect-2f015",
+    "storage_bucket": "kkopiconnect-2f015.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:964129969682:android:b1caf1b3920c153f1caacb",
+        "mobilesdk_app_id": "1:365637024668:android:97d38ff3785e4b280a6659",
         "android_client_info": {
           "package_name": "com.example.kkopiconnect_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAx4MTki3wulJTI_iqflPOBeEO_2QRDzdA"
+          "current_key": "AIzaSyCcoDGGi-OUDlFHZvJqVxioJHwHjsvDUM8"
         }
       ],
       "services": {

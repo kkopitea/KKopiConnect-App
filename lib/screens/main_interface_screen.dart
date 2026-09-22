@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'order_list_screen.dart';
 import 'profile_screen.dart';
@@ -14,62 +15,58 @@ class MainInterfaceScreen extends StatefulWidget {
 
 class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   int _selectedIndex = 0;
+  int _selectedNavigationIndex = 0;
 
   final List<Widget> _pages = const [
     _HomeTab(),
     CategoriesScreen(),
+    CartScreen(),
     OrderListScreen(),
     ProfileScreen(),
   ];
 
-  int _navPageIndexForLabel(String label) {
-    switch (label) {
-      case 'Home':
-        return 0;
-      case 'Categories':
-        return 1;
-      case 'Cart':
-        return 2;
-      case 'Orders':
-        return 2;
-      case 'Settings':
-        return 3;
-      default:
-        return 0;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+      backgroundColor: AppColors.orange,
       body: SafeArea(
         child: Center(
           child: _pages[_selectedIndex],
         ),
       ),
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(Icons.home_rounded, 'Home', 0),
-            _navItem(Icons.category_rounded, 'Categories', 1),
-            _navItem(Icons.shopping_bag_outlined, 'Cart', 2),
-            _navItem(Icons.receipt_long_rounded, 'Orders', 2),
-            _navItem(Icons.settings_rounded, 'Settings', 3),
-          ],
-        ),
+      bottomNavigationBar: Builder(
+        builder: (context) {
+          final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+          return Container(
+            color: Colors.white,
+            padding: EdgeInsets.only(
+              top: 10,
+              bottom: bottomInset + 10,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _navItem(Icons.home_rounded, 'Home', 0),
+                _navItem(Icons.category_rounded, 'Categories', 1),
+                _navItem(Icons.shopping_bag_outlined, 'Cart', 2),
+                _navItem(Icons.receipt_long_rounded, 'Orders', 3),
+                _navItem(Icons.settings_rounded, 'Settings', 4),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _navItem(IconData icon, String label, int index) {
-    final isActive = _selectedIndex == index;
+    final isActive = _selectedNavigationIndex == index;
     return GestureDetector(
       onTap: () {
-        setState(() => _selectedIndex = _navPageIndexForLabel(label));
+        setState(() {
+          _selectedNavigationIndex = index;
+          _selectedIndex = index;
+        });
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -98,30 +95,24 @@ class _HomeTab extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
+        constraints: BoxConstraints(
           maxWidth: 1080,
           maxHeight: 2400,
+          minHeight: MediaQuery.sizeOf(context).height - 120,
         ),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black38,
-                blurRadius: 10,
-                offset: Offset(0, 8),
-              ),
-            ],
           ),
           child: Column(
             children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
               decoration: const BoxDecoration(
                 color: AppColors.orange,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -168,147 +159,158 @@ class _HomeTab extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: const Text(
-                      'Buy 1, Get 1 Free!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -14),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: const Text(
+                        'Buy 1, Get 1 Free!',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                        color: AppColors.orange,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'Sip, smile, repeat.',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                          color: AppColors.orange,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Sip, smile, repeat.',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Your everyday coffee and milk tea made with love.',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
+                                SizedBox(height: 8),
+                                Text(
+                                  'Your everyday coffee and milk tea made with love.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          width: 92,
-                          height: 92,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Image.asset(
-                              'assets/images/welcome_drink.png',
-                              width: 70,
-                              fit: BoxFit.contain,
+                              ],
                             ),
                           ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 92,
+                            height: 92,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                'assets/images/welcome_drink.png',
+                                width: 70,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text(
+                          'Categories',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          'See all',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.orange,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text(
-                        'Categories',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        'See all',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.orange,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    crossAxisCount: 4,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 0.9,
-                    children: [
-                      _categoryIcon(Icons.local_drink, 'Milk Tea'),
-                      _categoryIcon(Icons.coffee_rounded, 'Coffee'),
-                      _categoryIcon(Icons.icecream_rounded, 'Fruit Tea'),
-                      _categoryIcon(Icons.fastfood_rounded, 'Add-ons'),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text(
-                        'Best Sellers',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        'See all',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.orange,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 140,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
+                    const SizedBox(height: 10),
+                    GridView.count(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      childAspectRatio: 0.9,
                       children: [
-                        _productChip('Iced Americano', 'P50'),
-                        _productChip('White Mocha', 'P70'),
-                        _productChip('Oreo Shake', 'P90'),
-                        _productChip('Pearl Milk', 'P60'),
+                        _categoryIcon(Icons.local_drink, 'Milk Tea'),
+                        _categoryIcon(Icons.coffee_rounded, 'Coffee'),
+                        _categoryIcon(Icons.icecream_rounded, 'Fruit Tea'),
+                        _categoryIcon(Icons.fastfood_rounded, 'Add-ons'),
                       ],
                     ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text(
+                          'Best Sellers',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          'See all',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.orange,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 140,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _productChip('Iced Americano', 'P50'),
+                          _productChip('White Mocha', 'P70'),
+                          _productChip('Oreo Shake', 'P90'),
+                          _productChip('Pearl Milk', 'P60'),
+                        ],
+                      ),
+                    ),
+                  ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+              ),
             ],
           ),
         ),

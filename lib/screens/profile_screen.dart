@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import 'login_screen_redesign.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -27,10 +29,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             child: Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
+              decoration: const BoxDecoration(color: Colors.white),
               child: Column(
                 children: [
                 Container(
@@ -38,12 +37,13 @@ class ProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
                   decoration: const BoxDecoration(
                     color: AppColors.orange,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (Navigator.canPop(context)) Navigator.pop(context);
+                        },
                         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -143,7 +143,21 @@ class ProfileScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {},
+                              onPressed: () async {
+                                try {
+                                  await FirebaseAuth.instance.signOut();
+                                  if (!context.mounted) return;
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    (route) => false,
+                                  );
+                                } on FirebaseAuthException catch (error) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Unable to log out: ${error.message ?? 'Please try again.'}')),
+                                  );
+                                }
+                              },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.orange,
                               foregroundColor: Colors.white,
@@ -166,20 +180,6 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _navItem(Icons.home_rounded, 'Home', false),
-                      _navItem(Icons.category_rounded, 'Categories', false),
-                      _navItem(Icons.shopping_bag_outlined, 'Cart', false),
-                      _navItem(Icons.receipt_long_rounded, 'Orders', false),
-                      _navItem(Icons.settings_rounded, 'Settings', true),
-                    ],
-                  ),
-                ),
                 ],
               ),
             ),
@@ -189,20 +189,4 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  static Widget _navItem(IconData icon, String label, bool active) {
-    return Column(
-      children: [
-        Icon(icon, color: active ? AppColors.orange : AppColors.iconMuted, size: 22),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: active ? AppColors.orange : AppColors.iconMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
 }

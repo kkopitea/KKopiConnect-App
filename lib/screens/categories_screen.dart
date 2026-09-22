@@ -17,7 +17,7 @@ class CategoriesScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+      backgroundColor: AppColors.orange,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -28,22 +28,23 @@ class CategoriesScreen extends StatelessWidget {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
+                color: Colors.transparent,
               ),
               child: Column(
                 children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
                   decoration: const BoxDecoration(
                     color: AppColors.orange,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (Navigator.canPop(context)) Navigator.pop(context);
+                        },
                         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -64,9 +65,14 @@ class CategoriesScreen extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: GridView.builder(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: GridView.builder(
                       itemCount: categories.length,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -107,21 +113,8 @@ class CategoriesScreen extends StatelessWidget {
                           ),
                         );
                       },
+                      ),
                     ),
-                  ),
-                ),
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _navItem(Icons.home_rounded, 'Home', false),
-                      _navItem(Icons.category_rounded, 'Categories', true),
-                      _navItem(Icons.shopping_bag_outlined, 'Cart', false),
-                      _navItem(Icons.receipt_long_rounded, 'Orders', false),
-                      _navItem(Icons.settings_rounded, 'Settings', false),
-                    ],
                   ),
                 ),
                 ],
@@ -133,20 +126,4 @@ class CategoriesScreen extends StatelessWidget {
     );
   }
 
-  static Widget _navItem(IconData icon, String label, bool active) {
-    return Column(
-      children: [
-        Icon(icon, color: active ? AppColors.orange : AppColors.iconMuted, size: 22),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: active ? AppColors.orange : AppColors.iconMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
 }

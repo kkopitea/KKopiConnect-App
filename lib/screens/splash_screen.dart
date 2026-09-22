@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import 'login_screen_redesign.dart';
+import 'main_interface_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     // Fade in
@@ -48,21 +50,30 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _goToNextScreen() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 1));
 
     if (!mounted) return;
+
+    Widget destination = const LoginScreen();
+    try {
+      if (FirebaseAuth.instance.currentUser != null) {
+        destination = const MainInterfaceScreen();
+      }
+    } on FirebaseException {
+      destination = const LoginScreen();
+    }
 
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
+            destination,
 
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
 
-        transitionDuration: const Duration(milliseconds: 700),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }

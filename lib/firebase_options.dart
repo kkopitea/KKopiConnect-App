@@ -41,48 +41,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCe2SlzKMedFkGAAKIRKp_Yh85ORq6CkK8',
-    appId: '1:964129969682:web:c72c63bbdbc2690a1caacb',
-    messagingSenderId: '964129969682',
-    projectId: 'kkopiconnect',
-    authDomain: 'kkopiconnect.firebaseapp.com',
-    storageBucket: 'kkopiconnect.firebasestorage.app',
-    measurementId: 'G-668CJELJ53',
+    apiKey: 'AIzaSyCJu3hm0JZHwMSU0d01jgnTcO16xtEVh6c',
+    appId: '1:365637024668:web:72267a7bc226e77c0a6659',
+    messagingSenderId: '365637024668',
+    projectId: 'kkopiconnect-2f015',
+    authDomain: 'kkopiconnect-2f015.firebaseapp.com',
+    storageBucket: 'kkopiconnect-2f015.firebasestorage.app',
+    measurementId: 'G-WFF18P93N2',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAx4MTki3wulJTI_iqflPOBeEO_2QRDzdA',
-    appId: '1:964129969682:android:b1caf1b3920c153f1caacb',
-    messagingSenderId: '964129969682',
-    projectId: 'kkopiconnect',
-    storageBucket: 'kkopiconnect.firebasestorage.app',
+    apiKey: 'AIzaSyCcoDGGi-OUDlFHZvJqVxioJHwHjsvDUM8',
+    appId: '1:365637024668:android:97d38ff3785e4b280a6659',
+    messagingSenderId: '365637024668',
+    projectId: 'kkopiconnect-2f015',
+    storageBucket: 'kkopiconnect-2f015.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCv4JMkbddoXimoIFYtSpIzFTo3xAfPzrY',
-    appId: '1:964129969682:ios:1d216cb165aca2f91caacb',
-    messagingSenderId: '964129969682',
-    projectId: 'kkopiconnect',
-    storageBucket: 'kkopiconnect.firebasestorage.app',
+    apiKey: 'AIzaSyAlJUgXjHUXkManXTuCKt_qS5Gusd43kHo',
+    appId: '1:365637024668:ios:55c2ed6601f72e280a6659',
+    messagingSenderId: '365637024668',
+    projectId: 'kkopiconnect-2f015',
+    storageBucket: 'kkopiconnect-2f015.firebasestorage.app',
     iosBundleId: 'com.example.kkopiconnectApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCv4JMkbddoXimoIFYtSpIzFTo3xAfPzrY',
-    appId: '1:964129969682:ios:1d216cb165aca2f91caacb',
-    messagingSenderId: '964129969682',
-    projectId: 'kkopiconnect',
-    storageBucket: 'kkopiconnect.firebasestorage.app',
+    apiKey: 'AIzaSyAlJUgXjHUXkManXTuCKt_qS5Gusd43kHo',
+    appId: '1:365637024668:ios:55c2ed6601f72e280a6659',
+    messagingSenderId: '365637024668',
+    projectId: 'kkopiconnect-2f015',
+    storageBucket: 'kkopiconnect-2f015.firebasestorage.app',
     iosBundleId: 'com.example.kkopiconnectApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCe2SlzKMedFkGAAKIRKp_Yh85ORq6CkK8',
-    appId: '1:964129969682:web:f6ab85b04c8867b01caacb',
-    messagingSenderId: '964129969682',
-    projectId: 'kkopiconnect',
-    authDomain: 'kkopiconnect.firebaseapp.com',
-    storageBucket: 'kkopiconnect.firebasestorage.app',
-    measurementId: 'G-JB5QSS3X40',
+    apiKey: 'AIzaSyCJu3hm0JZHwMSU0d01jgnTcO16xtEVh6c',
+    appId: '1:365637024668:web:eafb1ef62ccce21e0a6659',
+    messagingSenderId: '365637024668',
+    projectId: 'kkopiconnect-2f015',
+    authDomain: 'kkopiconnect-2f015.firebaseapp.com',
+    storageBucket: 'kkopiconnect-2f015.firebasestorage.app',
+    measurementId: 'G-6S940X779F',
   );
 }
