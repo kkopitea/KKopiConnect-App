@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/order_draft.dart';
+import '../state/cart_store.dart';
+import '../state/orders_store.dart';
+import '../widgets/cloudinary_image.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'order_confirmation_screen.dart';
@@ -9,9 +12,9 @@ import 'order_list_screen.dart';
 import 'profile_screen.dart';
 
 class OrderTypeScreen extends StatefulWidget {
-  const OrderTypeScreen({super.key, required this.draft});
+  const OrderTypeScreen({super.key, required this.drafts});
 
-  final OrderDraft draft;
+  final List<OrderDraft> drafts;
 
   @override
   State<OrderTypeScreen> createState() => _OrderTypeScreenState();
@@ -36,7 +39,8 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final draft = widget.draft;
+    final drafts = widget.drafts;
+    final total = drafts.fold<int>(0, (sum, draft) => sum + draft.total);
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
@@ -82,37 +86,39 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
+            Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE1E1E1)),
+                side: const BorderSide(color: Color(0xFFE1E1E1)),
               ),
-              child: RadioGroup<String>(
-                groupValue: _paymentMethod,
-                onChanged: (value) {
-                  if (value != null) setState(() => _paymentMethod = value);
-                },
-                child: const Column(
-                  children: [
-                    RadioListTile<String>(
-                      value: 'Pay At The Counter',
-                      title: Text(
-                        'Pay At The Counter',
-                        style: TextStyle(fontSize: 13),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: RadioGroup<String>(
+                  groupValue: _paymentMethod,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _paymentMethod = value);
+                  },
+                  child: const Column(
+                    children: [
+                      RadioListTile<String>(
+                        value: 'Pay At The Counter',
+                        title: Text(
+                          'Pay At The Counter',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppColors.orange,
                       ),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.orange,
-                    ),
-                    Divider(height: 1),
-                    RadioListTile<String>(
-                      value: 'Gcash',
-                      title: Text('Gcash', style: TextStyle(fontSize: 13)),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.orange,
-                    ),
-                  ],
+                      Divider(height: 1),
+                      RadioListTile<String>(
+                        value: 'Gcash',
+                        title: Text('Gcash', style: TextStyle(fontSize: 13)),
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppColors.orange,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -154,49 +160,9 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
               ),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          draft.product.imageAsset,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '${draft.product.name} × ${draft.quantity}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      Text(
-                        'P${draft.total}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                  if (draft.addOns.isNotEmpty ||
-                      draft.addIns.isNotEmpty ||
-                      draft.sugar != '50%' ||
-                      draft.ice != '50%') ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        [
-                          '${draft.size} · ${draft.sugar} sugar · ${draft.ice} ice',
-                          if (draft.addIns.isNotEmpty) draft.addIns.join(', '),
-                          if (draft.addOns.isNotEmpty) draft.addOns.join(', '),
-                        ].join(' · '),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ),
+                  for (var index = 0; index < drafts.length; index++) ...[
+                    if (index > 0) const Divider(height: 18),
+                    _OrderLineSummary(draft: drafts[index]),
                   ],
                   const Divider(height: 24),
                   Row(
@@ -210,7 +176,7 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
                         ),
                       ),
                       Text(
-                        'P${draft.total}',
+                        'P$total',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -223,11 +189,20 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
             ),
             const SizedBox(height: 18),
             FilledButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => OrderConfirmationScreen(draft: draft),
-                ),
-              ),
+              onPressed: () {
+                final order = OrdersStore.createOrder(
+                  items: drafts,
+                  fulfillment: _pickup ? 'Pickup' : 'Dine In',
+                  paymentMethod: _paymentMethod,
+                  instructions: _noteController.text.trim(),
+                );
+                CartStore.clear();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => OrderConfirmationScreen(order: order),
+                  ),
+                );
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.orange,
                 foregroundColor: Colors.white,
@@ -298,6 +273,63 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
         ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
         break;
     }
+  }
+}
+
+class _OrderLineSummary extends StatelessWidget {
+  const _OrderLineSummary({required this.draft});
+
+  final OrderDraft draft;
+
+  @override
+  Widget build(BuildContext context) {
+    final customizations = [
+      '${draft.size} · ${draft.sugar} sugar · ${draft.ice} ice',
+      ...draft.addIns,
+      ...draft.addOns,
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: CloudinaryImage(
+            url: draft.product.imageUrl,
+            fallbackAsset: draft.product.imageAsset,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${draft.product.name} × ${draft.quantity}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                customizations.join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'P${draft.total}',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ],
+    );
   }
 }
 

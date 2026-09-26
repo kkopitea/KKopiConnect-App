@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/order_draft.dart';
-import 'order_type_screen.dart';
+import '../state/cart_store.dart';
+import '../widgets/cloudinary_image.dart';
+import 'cart_screen.dart';
 
 class CustomizeDrinkScreen extends StatefulWidget {
   const CustomizeDrinkScreen({super.key, required this.draft});
@@ -117,6 +119,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                     size: size,
                     price: sizePrice,
                     image: product.imageAsset,
+                    imageUrl: product.imageUrl,
                     isBestSeller: product.isBestSeller,
                     quantity: quantity,
                     onQuantity: (value) => setState(() => quantity = value),
@@ -241,10 +244,9 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
+                      CartStore.add(_currentDraft);
                       Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => OrderTypeScreen(draft: _currentDraft),
-                        ),
+                        MaterialPageRoute<void>(builder: (_) => const CartScreen()),
                       );
                     },
                     child: Text('Add to cart  P$total'),
@@ -273,6 +275,7 @@ class _ProductSummary extends StatelessWidget {
     required this.size,
     required this.price,
     required this.image,
+    required this.imageUrl,
     required this.isBestSeller,
     required this.quantity,
     required this.onQuantity,
@@ -282,6 +285,7 @@ class _ProductSummary extends StatelessWidget {
   final String size;
   final int price;
   final String image;
+  final String? imageUrl;
   final bool isBestSeller;
   final int quantity;
   final ValueChanged<int> onQuantity;
@@ -295,7 +299,13 @@ class _ProductSummary extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(image, width: 52, height: 52, fit: BoxFit.cover),
+            child: CloudinaryImage(
+              url: imageUrl,
+              fallbackAsset: image,
+              width: 52,
+              height: 52,
+              fit: BoxFit.cover,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(

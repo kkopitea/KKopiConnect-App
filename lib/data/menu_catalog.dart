@@ -24,6 +24,7 @@ class MenuProduct {
     this.isNew = false,
     this.isClassic = false,
     this.imageAsset = 'assets/images/welcome_drink.png',
+    this.imageUrl,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class MenuProduct {
   final bool isNew;
   final bool isClassic;
   final String imageAsset;
+  final String? imageUrl;
 }
 
 const menuCategories = <MenuCategory>[

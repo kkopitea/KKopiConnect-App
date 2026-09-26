@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
-import 'order_type_screen.dart';
+import '../state/cart_store.dart';
 import 'product_detail_screen.dart';
+import '../widgets/cloudinary_image.dart';
 
 class CategoryProductsScreen extends StatelessWidget {
   const CategoryProductsScreen({super.key, required this.category});
@@ -71,8 +72,9 @@ class CategoryProductsScreen extends StatelessWidget {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.asset(
-                              product.imageAsset,
+                            child: CloudinaryImage(
+                              url: product.imageUrl,
+                              fallbackAsset: product.imageAsset,
                               width: 62,
                               height: 62,
                               fit: BoxFit.cover,
@@ -114,13 +116,12 @@ class CategoryProductsScreen extends StatelessWidget {
                           ),
                           IconButton.filled(
                             tooltip: 'Add ${product.name}',
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => OrderTypeScreen(
-                                  draft: OrderDraft(product: product),
-                                ),
-                              ),
-                            ),
+                            onPressed: () {
+                              CartStore.add(OrderDraft(product: product));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${product.name} added to cart')),
+                              );
+                            },
                             style: IconButton.styleFrom(
                               backgroundColor: AppColors.orange,
                               foregroundColor: Colors.white,

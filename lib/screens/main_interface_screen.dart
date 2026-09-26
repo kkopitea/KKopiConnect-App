@@ -19,10 +19,10 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
 
   late final _pages = <Widget>[
     HomeScreen(onSeeAllCategories: () => _selectTab(1)),
-    CategoriesScreen(),
+    CategoriesScreen(onNavigateTab: _selectTab),
     CartScreen(),
     OrderListScreen(),
-    ProfileScreen(),
+    ProfileScreen(onNavigateTab: _selectTab),
   ];
 
   void _selectTab(int index) => setState(() => _selectedIndex = index);

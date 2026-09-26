@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
-import '../data/order_draft.dart';
+import '../data/placed_order.dart';
+import '../widgets/cloudinary_image.dart';
 import 'order_list_screen.dart';
 
 class OrderConfirmationScreen extends StatelessWidget {
-  const OrderConfirmationScreen({super.key, required this.draft});
+  const OrderConfirmationScreen({super.key, required this.order});
 
-  final OrderDraft draft;
+  final PlacedOrder order;
 
   @override
   Widget build(BuildContext context) {
+    final firstProduct = order.items.isEmpty ? null : order.items.first.product;
+    final orderLabel = order.items.length == 1
+        ? order.items.first.product.name
+        : '${order.items.first.product.name} + ${order.items.length - 1} more';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -33,33 +39,56 @@ class OrderConfirmationScreen extends StatelessWidget {
                       height: 245,
                       child: Stack(
                         children: [
-                          Positioned(
+                          const Positioned(
                             left: 18,
                             top: 40,
-                            child: _sparkle(Icons.star_rounded, 22),
+                            child: Icon(
+                              Icons.star_rounded,
+                              color: AppColors.orange,
+                              size: 22,
+                            ),
                           ),
-                          Positioned(
+                          const Positioned(
                             right: 26,
                             top: 28,
-                            child: _sparkle(Icons.auto_awesome_rounded, 19),
+                            child: Icon(
+                              Icons.auto_awesome_rounded,
+                              color: AppColors.orange,
+                              size: 19,
+                            ),
                           ),
-                          Positioned(
+                          const Positioned(
                             left: 48,
                             bottom: 38,
-                            child: _sparkle(Icons.circle, 8),
+                            child: Icon(
+                              Icons.circle,
+                              color: AppColors.orange,
+                              size: 8,
+                            ),
                           ),
-                          Positioned(
+                          const Positioned(
                             right: 44,
                             bottom: 48,
-                            child: _sparkle(Icons.star_rounded, 13),
+                            child: Icon(
+                              Icons.star_rounded,
+                              color: AppColors.orange,
+                              size: 13,
+                            ),
                           ),
                           Center(
-                            child: Image.asset(
-                              draft.product.imageAsset,
-                              width: 205,
-                              height: 230,
-                              fit: BoxFit.contain,
-                            ),
+                            child: firstProduct == null
+                                ? const Icon(
+                                    Icons.local_cafe_rounded,
+                                    color: AppColors.orange,
+                                    size: 120,
+                                  )
+                                : CloudinaryImage(
+                                    url: firstProduct.imageUrl,
+                                    fallbackAsset: firstProduct.imageAsset,
+                                    width: 205,
+                                    height: 230,
+                                    fit: BoxFit.contain,
+                                  ),
                           ),
                         ],
                       ),
@@ -94,10 +123,10 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Your order has been placed successfully.',
+                Text(
+                  '$orderLabel has been placed successfully.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 14,
                     height: 1.45,
@@ -105,7 +134,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Order #1239-2026-KK51 · P${draft.total}',
+                  'Order ${order.formattedId} · P${order.total}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textMuted,
@@ -114,13 +143,12 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  'A confirmation has been sent to your email and SMS.',
+                Text(
+                  '${order.fulfillment} · ${order.paymentMethod}',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 12,
-                    height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -160,7 +188,4 @@ class OrderConfirmationScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _sparkle(IconData icon, double size) =>
-      Icon(icon, color: AppColors.orange, size: size);
 }

@@ -1,247 +1,177 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/placed_order.dart';
+import '../state/orders_store.dart';
+import '../widgets/cloudinary_image.dart';
+import 'categories_screen.dart';
 
 class OrderListScreen extends StatelessWidget {
   const OrderListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final orders = [
-      {
-        'id': 'Order #0004',
-        'status': 'Pending',
-        'price': 'P50.00',
-        'date': 'Today',
-      },
-      {
-        'id': 'Order #0003',
-        'status': 'Completed',
-        'price': 'P100.00',
-        'date': '2 days ago',
-      },
-      {
-        'id': 'Order #0002',
-        'status': 'Preparing',
-        'price': 'P120.00',
-        'date': '3 days ago',
-      },
-      {
-        'id': 'Order #0001',
-        'status': 'Cancelled',
-        'price': 'P80.00',
-        'date': '4 days ago',
-      },
-    ];
-
     return Scaffold(
-      backgroundColor: AppColors.orange,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1080, maxHeight: 2400),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(color: Colors.transparent),
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
-                    decoration: const BoxDecoration(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: const Text('My Orders'),
+        backgroundColor: AppColors.orange,
+        foregroundColor: Colors.white,
+      ),
+      body: ValueListenableBuilder<List<PlacedOrder>>(
+        valueListenable: OrdersStore.orders,
+        builder: (context, orders, _) {
+          if (orders.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.receipt_long_rounded,
+                      size: 44,
                       color: AppColors.orange,
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(24),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No orders yet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            if (Navigator.canPop(context)) {
-                              Navigator.pop(context);
-                            }
-                          },
-                          icon: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Order List',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 40),
-                      ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Your placed orders will appear here.',
+                      style: TextStyle(color: AppColors.textMuted),
                     ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const CategoriesScreen(),
                         ),
                       ),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(14),
-                        itemCount: orders.length,
-                        itemBuilder: (context, index) {
-                          final order = orders[index];
-                          final status = order['status'] as String;
-                          final statusColor = switch (status) {
-                            'Pending' => const Color(0xFFFFF1E6),
-                            'Preparing' => const Color(0xFFFFF0B3),
-                            'Completed' => const Color(0xFFE8F7E8),
-                            _ => const Color(0xFFF3E5E5),
-                          };
-                          final statusTextColor = switch (status) {
-                            'Pending' => AppColors.orange,
-                            'Preparing' => const Color(0xFFB76B00),
-                            'Completed' => const Color(0xFF2E7D32),
-                            _ => const Color(0xFFC62828),
-                          };
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF5EAD7),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Center(
-                                    child: Image.asset(
-                                      'assets/images/welcome_drink.png',
-                                      width: 32,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              order['id'] as String,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: statusColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              status,
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: statusTextColor,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Order from ${order['date']}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF666666),
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            order['price'] as String,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(
-                                                  builder: (_) =>
-                                                      OrderDetailsScreen(
-                                                        order: order,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                            style: TextButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
-                                                  ),
-                                              backgroundColor: AppColors.orange,
-                                            ),
-                                            child: const Text(
-                                              'View Details',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.orange,
+                        foregroundColor: Colors.white,
                       ),
+                      child: const Text('Browse menu'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(14),
+            itemCount: orders.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) => _OrderCard(
+              order: orders[index],
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OrderDetailsScreen(order: orders[index]),
+                ),
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _OrderCard extends StatelessWidget {
+  const _OrderCard({required this.order, required this.onTap});
+
+  final PlacedOrder order;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstProduct = order.items.isEmpty ? null : order.items.first.product;
+    final name = order.items.length == 1
+        ? order.items.first.product.name
+        : '${order.items.first.product.name} + ${order.items.length - 1} more';
+    final statusColor = _statusColor(order.status);
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: firstProduct == null
+                    ? const SizedBox(
+                        width: 54,
+                        height: 54,
+                        child: Icon(Icons.local_cafe_rounded),
+                      )
+                    : CloudinaryImage(
+                        url: firstProduct.imageUrl,
+                        fallbackAsset: firstProduct.imageAsset,
+                        width: 54,
+                        height: 54,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.formattedId,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_formatDate(order.createdAt)} · P${order.total}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  order.status,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -252,69 +182,40 @@ class OrderListScreen extends StatelessWidget {
 class OrderDetailsScreen extends StatelessWidget {
   const OrderDetailsScreen({super.key, required this.order});
 
-  final Map<String, String> order;
+  final PlacedOrder order;
 
   @override
   Widget build(BuildContext context) {
-    final status = order['status']!;
-    final isCancelled = status == 'Cancelled';
-    final isCompleted = status == 'Completed';
-    final statusColor = switch (status) {
-      'Pending' => AppColors.orange,
-      'Preparing' => const Color(0xFFB76B00),
-      'Completed' => const Color(0xFF2E7D32),
-      _ => const Color(0xFFC62828),
-    };
-    final currentStep = switch (status) {
-      'Pending' => 0,
-      'Preparing' => 1,
-      'Completed' => 2,
-      _ => -1,
-    };
-    final statusMessage = switch (status) {
-      'Pending' => 'Your order has been received.',
-      'Preparing' => 'Your order is being prepared.',
-      'Completed' => 'Your order is complete. Thank you for ordering!',
-      _ => 'This order was cancelled.',
-    };
-
     return Scaffold(
-      backgroundColor: AppColors.orange,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text('Order Details'),
         backgroundColor: AppColors.orange,
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
-      body: SafeArea(
-        child: Container(
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF8F8F8),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
+      body: ValueListenableBuilder<List<PlacedOrder>>(
+        valueListenable: OrdersStore.orders,
+        builder: (context, orders, _) {
+          final matchingOrders = orders.where((item) => item.id == order.id);
+          final current = matchingOrders.isEmpty ? order : matchingOrders.first;
+          final statusColor = _statusColor(current.status);
+          return ListView(
+            padding: const EdgeInsets.all(16),
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
-                ),
+                padding: const EdgeInsets.all(16),
+                decoration: _panelDecoration,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
-                            order['id']!,
+                            current.formattedId,
                             style: const TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -325,10 +226,10 @@ class OrderDetailsScreen extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                           child: Text(
-                            status,
+                            current.status,
                             style: TextStyle(
                               color: statusColor,
                               fontWeight: FontWeight.w700,
@@ -339,203 +240,156 @@ class OrderDetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Order from ${order['date']}',
-                      style: const TextStyle(color: Color(0xFF666666)),
+                      '${_formatDate(current.createdAt)} · ${current.fulfillment}',
+                      style: const TextStyle(color: AppColors.textMuted),
                     ),
-                    const SizedBox(height: 20),
                     Text(
-                      statusMessage,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
+                      'Payment: ${current.paymentMethod}',
+                      style: const TextStyle(color: AppColors.textMuted),
+                    ),
+                    if (current.instructions.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Note: ${current.instructions}',
+                        style: const TextStyle(color: AppColors.textMuted),
                       ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: _panelDecoration,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Items',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final item in current.items) ...[
+                      if (item != current.items.first)
+                        const Divider(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${item.product.name} × ${item.quantity}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'P${item.total}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${item.size} · ${item.sugar} sugar · ${item.ice} ice',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      if (item.addIns.isNotEmpty || item.addOns.isNotEmpty)
+                        Text(
+                          [...item.addIns, ...item.addOns].join(', '),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                    ],
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Order total',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          'P${current.total}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              if (isCancelled)
-                _OrderStatusPanel(
-                  icon: Icons.cancel_outlined,
-                  color: statusColor,
-                  title: 'Order cancelled',
-                  message: 'This order will not be prepared.',
-                )
-              else ...[
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE8E8E8)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Order progress',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      for (var index = 0; index < 3; index++)
-                        _OrderProgressStep(
-                          title: const [
-                            'Order received',
-                            'Preparing',
-                            'Completed',
-                          ][index],
-                          isActive: index <= currentStep,
-                          isLast: index == 2,
-                          isCompletedOrder: isCompleted,
-                        ),
-                    ],
-                  ),
-                ),
+              if (current.status == 'Pending') ...[
                 const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE8E8E8)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Order total',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        order['price']!,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
+                OutlinedButton.icon(
+                  onPressed: () => _confirmCancellation(context, current),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Cancel order'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFC62828),
                   ),
                 ),
               ],
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
-}
 
-class _OrderStatusPanel extends StatelessWidget {
-  const _OrderStatusPanel({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8E8E8)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(message, style: const TextStyle(color: Color(0xFF666666))),
-              ],
+  Future<void> _confirmCancellation(
+    BuildContext context,
+    PlacedOrder current,
+  ) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel this order?'),
+        content: const Text('This will mark the order as cancelled.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep order'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
             ),
+            child: const Text('Cancel order'),
           ),
         ],
       ),
     );
+    if (shouldCancel == true) OrdersStore.updateStatus(current.id, 'Cancelled');
   }
 }
 
-class _OrderProgressStep extends StatelessWidget {
-  const _OrderProgressStep({
-    required this.title,
-    required this.isActive,
-    required this.isLast,
-    required this.isCompletedOrder,
-  });
+const _panelDecoration = BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.all(Radius.circular(12)),
+  border: Border.fromBorderSide(BorderSide(color: Color(0xFFE7E7E7))),
+);
 
-  final String title;
-  final bool isActive;
-  final bool isLast;
-  final bool isCompletedOrder;
+Color _statusColor(String status) => switch (status) {
+  'Pending' => AppColors.orange,
+  'Preparing' => const Color(0xFFB76B00),
+  'Completed' => const Color(0xFF2E7D32),
+  _ => const Color(0xFFC62828),
+};
 
-  @override
-  Widget build(BuildContext context) {
-    final color = isActive ? const Color(0xFF2E7D32) : const Color(0xFFBDBDBD);
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 24,
-            child: Column(
-              children: [
-                Icon(
-                  isActive ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: color,
-                  size: 20,
-                ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isActive ? color : const Color(0xFFE0E0E0),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: isActive
-                    ? const Color(0xFF222222)
-                    : const Color(0xFF888888),
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-          if (isCompletedOrder && title == 'Completed')
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Text(
-                'Done',
-                style: TextStyle(color: Color(0xFF2E7D32), fontSize: 12),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+String _formatDate(DateTime date) {
+  final local = date.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  return '${local.year}-$month-$day';
 }

@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
+import '../state/cart_store.dart';
 import 'cart_screen.dart';
 import 'category_products_screen.dart';
-import 'order_type_screen.dart';
 import 'product_detail_screen.dart';
+import 'search_screen.dart';
+import '../widgets/cloudinary_image.dart';
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key});
+  const CategoriesScreen({super.key, this.onNavigateTab});
+
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -56,7 +60,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   ),
                   IconButton(
                     tooltip: 'Search products',
-                    onPressed: _showSearch,
+                    onPressed: _openSearch,
                     icon: const Icon(Icons.search_rounded, color: Colors.white),
                   ),
                   IconButton(
@@ -149,35 +153,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     Color(0xFFFFE8CB),
   ];
 
-  Future<void> _showSearch() async {
-    final controller = TextEditingController(text: _searchQuery);
-    final query = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Search menu'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textInputAction: TextInputAction.search,
-          decoration: const InputDecoration(
-            hintText: 'Search drinks and snacks',
-          ),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchScreen(
+          onNavigateTab: (index) {
+            Navigator.of(context).pop();
+            widget.onNavigateTab?.call(index);
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Search'),
-          ),
-        ],
       ),
     );
-    controller.dispose();
-    if (query != null && mounted) setState(() => _searchQuery = query.trim());
   }
 
   void _showCategories() {
@@ -223,10 +209,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   void _addProduct(MenuProduct product) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => OrderTypeScreen(draft: OrderDraft(product: product)),
-      ),
+    CartStore.add(OrderDraft(product: product));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${product.name} added to cart')),
     );
   }
 }
@@ -382,7 +367,11 @@ class _ProductRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: Image.asset(product.imageAsset, fit: BoxFit.cover),
+                  child: CloudinaryImage(
+                    url: product.imageUrl,
+                    fallbackAsset: product.imageAsset,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 9),
                 Expanded(

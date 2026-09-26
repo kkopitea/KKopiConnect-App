@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
+import '../state/favorites_store.dart';
+import '../state/cart_store.dart';
+import '../widgets/cloudinary_image.dart';
 import 'customize_drink_screen.dart';
-import 'order_type_screen.dart';
+import 'cart_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key, required this.product});
@@ -20,7 +23,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   String _selectedSize = 'Medium';
   int _selectedPrice = 0;
-  bool _isFavorite = false;
 
   List<(String, int)> get _sizes => [
     ('Regular', widget.product.price),
@@ -63,8 +65,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                     ),
                     child: Center(
-                      child: Image.asset(
-                        product.imageAsset,
+                      child: CloudinaryImage(
+                        url: product.imageUrl,
+                        fallbackAsset: product.imageAsset,
                         width: 220,
                         fit: BoxFit.contain,
                       ),
@@ -86,18 +89,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     right: 8,
                     child: Row(
                       children: [
-                        IconButton(
-                          tooltip: _isFavorite
-                              ? 'Remove favorite'
-                              : 'Add favorite',
-                          onPressed: () =>
-                              setState(() => _isFavorite = !_isFavorite),
-                          icon: Icon(
-                            _isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: Colors.white,
-                          ),
+                        ValueListenableBuilder<Set<String>>(
+                          valueListenable: FavoritesStore.productIds,
+                          builder: (context, favorites, _) {
+                            final isFavorite = favorites.contains(product.id);
+                            return IconButton(
+                              tooltip: isFavorite
+                                  ? 'Remove favorite'
+                                  : 'Add favorite',
+                              onPressed: () =>
+                                  FavoritesStore.toggle(product.id),
+                              icon: Icon(
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
                         ),
                         IconButton(
                           tooltip: 'Share product',
@@ -299,11 +308,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                       const SizedBox(height: 8),
                       FilledButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => OrderTypeScreen(draft: _draft),
-                          ),
-                        ),
+                        onPressed: () {
+                          CartStore.add(_draft);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${product.name} added to cart'),
+                              action: SnackBarAction(
+                                label: 'View cart',
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const CartScreen(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.orange,
                           foregroundColor: Colors.white,

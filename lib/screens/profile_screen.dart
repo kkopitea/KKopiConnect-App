@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import 'categories_screen.dart';
+import 'favorites_screen.dart';
 import 'login_screen_redesign.dart';
 import 'notifications_screen.dart';
 import 'order_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onNavigateTab});
+
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _savedAddress = '';
   String _paymentMethod = 'Pay At The Counter';
 
   @override
@@ -25,7 +27,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = user?.email ?? 'No email address';
     final items = [
       ('My Orders', Icons.receipt_long_rounded),
-      ('My Address', Icons.location_on_rounded),
       ('Payment Methods', Icons.wallet_rounded),
       ('Favorites', Icons.favorite_border_rounded),
       ('Notifications', Icons.notifications_none_rounded),
@@ -164,9 +165,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget? _subtitleFor(String title) => switch (title) {
-    'My Address' => Text(
-      _savedAddress.isEmpty ? 'Add a delivery address' : _savedAddress,
-    ),
     'Payment Methods' => Text(_paymentMethod),
     _ => null,
   };
@@ -177,9 +175,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
         );
-        return;
-      case 'My Address':
-        await _editAddress(context);
         return;
       case 'Payment Methods':
         await _selectPaymentMethod(context);
@@ -196,40 +191,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _showHelp(context);
         return;
     }
-  }
-
-  Future<void> _editAddress(BuildContext context) async {
-    final controller = TextEditingController(text: _savedAddress);
-    final address = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('My Address'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 3,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Delivery address',
-            hintText: 'Enter your address',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (address != null && mounted) setState(() => _savedAddress = address);
   }
 
   Future<void> _selectPaymentMethod(BuildContext context) async {
@@ -276,28 +237,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showFavorites(BuildContext context) async {
-    final browseCategories = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Favorites'),
-        content: const Text('You have not saved any favorite items yet.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Browse categories'),
-          ),
-        ],
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => FavoritesScreen(
+          onBrowseMenu: () {
+            Navigator.of(context).pop();
+            if (widget.onNavigateTab case final navigate?) {
+              navigate(1);
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CategoriesScreen(),
+                ),
+              );
+            }
+          },
+        ),
       ),
     );
-    if (browseCategories == true && context.mounted) {
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
-    }
   }
 
   Future<void> _showHelp(BuildContext context) async {

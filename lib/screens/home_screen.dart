@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import 'notifications_screen.dart';
 import 'product_detail_screen.dart';
+import '../widgets/cloudinary_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onSeeAllCategories});
@@ -453,7 +454,11 @@ class _BestSellerCard extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(product.imageAsset, fit: BoxFit.contain),
+                  child: CloudinaryImage(
+                    url: product.imageUrl,
+                    fallbackAsset: product.imageAsset,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),

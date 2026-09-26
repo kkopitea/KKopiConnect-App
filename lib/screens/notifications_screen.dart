@@ -1,177 +1,234 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/placed_order.dart';
+import '../state/orders_store.dart';
+import 'categories_screen.dart';
+import 'order_list_screen.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  static const _filters = ['All', 'Orders', 'Promotion', 'System'];
+  String _activeFilter = 'All';
+
+  static const _announcements = <_NotificationItem>[
+    _NotificationItem(
+      title: 'Special Promo',
+      message: 'Get 10% off your next order.',
+      time: 'Yesterday',
+      type: 'Promotion',
+      icon: Icons.local_offer_rounded,
+    ),
+    _NotificationItem(
+      title: 'New Menu',
+      message: 'Try the new Brown Sugar Pearl Latte.',
+      time: 'Sep 24',
+      type: 'System',
+      icon: Icons.coffee_rounded,
+    ),
+    _NotificationItem(
+      title: 'Loyalty Reward',
+      message: 'You have earned 20 points this week.',
+      time: 'Sep 20',
+      type: 'Promotion',
+      icon: Icons.card_giftcard_rounded,
+    ),
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    final items = [
-      {'title': 'Order Update', 'subtitle': 'Your order #1239-2026-KK51 now is preparing.', 'time': '10:31 AM', 'type': 'order'},
-      {'title': 'Special Promo', 'subtitle': 'Get 10% off on your next order.', 'time': 'Yesterday', 'type': 'promo'},
-      {'title': 'New Menu', 'subtitle': 'Try the new Brown Sugar Pearl Latte.', 'time': 'July 23', 'type': 'menu'},
-      {'title': 'Loyalty Reward', 'subtitle': 'You have earned 20 points for this week.', 'time': 'July 10', 'type': 'reward'},
-    ];
-
-    final tabs = ['All', 'Orders', 'Promotion', 'System'];
-
     return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 1080,
-              maxHeight: 2400,
-            ),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        backgroundColor: AppColors.orange,
+        foregroundColor: Colors.white,
+      ),
+      body: ValueListenableBuilder<List<PlacedOrder>>(
+        valueListenable: OrdersStore.orders,
+        builder: (context, orders, _) {
+          final notifications = [
+            ..._announcements,
+            for (final order in orders)
+              _NotificationItem(
+                title: 'Order ${order.status}',
+                message:
+                    'Order ${order.formattedId} is ${order.status.toLowerCase()}.',
+                time: _dateLabel(order.createdAt),
+                type: 'Orders',
+                icon: Icons.receipt_long_rounded,
               ),
-              child: Column(
-                children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          if (Navigator.canPop(context)) Navigator.pop(context);
-                        },
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Notifications',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 40),
-                    ],
-                  ),
-                ),
-                Container(
-                  color: AppColors.orange,
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                  child: Row(
-                    children: tabs.map((tab) {
-                      final active = tab == 'Orders';
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: active ? Colors.white : const Color(0xFFFF9E42),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            tab,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: active ? AppColors.orange : Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      final type = item['type'] as String;
-                      final icon = switch (type) {
-                        'order' => Icons.receipt_long_rounded,
-                        'promo' => Icons.local_offer_rounded,
-                        'menu' => Icons.coffee_rounded,
-                        _ => Icons.card_giftcard_rounded,
-                      };
+          ];
+          final items = _activeFilter == 'All'
+              ? notifications
+              : notifications
+                    .where((item) => item.type == _activeFilter)
+                    .toList();
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+          return Column(
+            children: [
+              Container(
+                color: Colors.white,
+                height: 44,
+                child: Row(
+                  children: [
+                    for (final filter in _filters)
+                      Expanded(
+                        child: _NotificationFilter(
+                          label: filter,
+                          selected: filter == _activeFilter,
+                          onTap: () => setState(() => _activeFilter = filter),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: items.isEmpty
+                    ? const Center(
+                        child: Text('No notifications in this section'),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(14),
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            leading: Container(
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: AppColors.orange,
+                                color: AppColors.orangeTint,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(icon, color: Colors.white, size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['title'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item['subtitle'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xFF666666),
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
+                              child: Icon(
+                                item.icon,
+                                color: AppColors.orange,
+                                size: 20,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              item['time'] as String,
+                            title: Text(
+                              item.title,
                               style: const TextStyle(
-                                fontSize: 10,
-                                color: Color(0xFF666666),
-                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                ],
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                item.message,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            trailing: Text(
+                              item.time,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            onTap: () => _openNotification(item),
+                          );
+                        },
+                      ),
               ),
-            ),
-          ),
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 
+  void _openNotification(_NotificationItem item) {
+    if (item.type == 'Orders') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const OrderListScreen()));
+    } else if (item.type == 'Promotion' || item.type == 'System') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
+    }
+  }
+}
+
+String _dateLabel(DateTime date) {
+  final local = date.toLocal();
+  return '${local.month}/${local.day}/${local.year}';
+}
+
+class _NotificationItem {
+  const _NotificationItem({
+    required this.title,
+    required this.message,
+    required this.time,
+    required this.type,
+    required this.icon,
+  });
+
+  final String title;
+  final String message;
+  final String time;
+  final String type;
+  final IconData icon;
+}
+
+class _NotificationFilter extends StatelessWidget {
+  const _NotificationFilter({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? AppColors.orange : AppColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              color: selected ? AppColors.orange : Colors.transparent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

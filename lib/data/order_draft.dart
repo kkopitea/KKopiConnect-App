@@ -31,6 +31,55 @@ class OrderDraft {
 
   int get total => (unitPrice + addInTotal + addOnTotal) * quantity;
 
+  Map<String, Object?> toMap() => {
+    'productId': product.id,
+    'productName': product.name,
+    'productDescription': product.description,
+    'productPrice': product.price,
+    'productImageAsset': product.imageAsset,
+    'productImageUrl': product.imageUrl,
+    'quantity': quantity,
+    'size': size,
+    'sizePrice': sizePrice,
+    'sugar': sugar,
+    'ice': ice,
+    'addIns': addIns.toList(),
+    'addOns': addOns.toList(),
+    'total': total,
+  };
+
+  factory OrderDraft.fromMap(Map<String, dynamic> map) {
+    final productId = map['productId'] as String? ?? 'unknown-product';
+    final matchingProducts = menuProducts.where(
+      (product) => product.id == productId,
+    );
+    final product = matchingProducts.isEmpty
+        ? MenuProduct(
+            id: productId,
+            name: map['productName'] as String? ?? 'Menu item',
+            description: map['productDescription'] as String? ?? '',
+            price: (map['productPrice'] as num?)?.toInt() ?? 0,
+            categoryId: '',
+            categoryIds: const [],
+            imageAsset:
+                map['productImageAsset'] as String? ??
+                'assets/images/welcome_drink.png',
+            imageUrl: map['productImageUrl'] as String?,
+          )
+        : matchingProducts.first;
+
+    return OrderDraft(
+      product: product,
+      quantity: (map['quantity'] as num?)?.toInt() ?? 1,
+      size: map['size'] as String? ?? 'Regular',
+      sizePrice: (map['sizePrice'] as num?)?.toInt(),
+      sugar: map['sugar'] as String? ?? '50%',
+      ice: map['ice'] as String? ?? '50%',
+      addIns: Set<String>.from(map['addIns'] as List? ?? const []),
+      addOns: Set<String>.from(map['addOns'] as List? ?? const []),
+    );
+  }
+
   OrderDraft copyWith({
     int? quantity,
     String? size,
