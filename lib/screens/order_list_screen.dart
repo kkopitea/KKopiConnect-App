@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/order_repository.dart';
 import '../data/placed_order.dart';
 import '../state/orders_store.dart';
 import '../widgets/cloudinary_image.dart';
@@ -11,6 +13,12 @@ class OrderListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    final ordersStream = user == null
+        ? Stream<List<PlacedOrder>>.empty()
+        : FirestoreOrderRepository().watchOrders(user.uid);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -18,9 +26,46 @@ class OrderListScreen extends StatelessWidget {
         backgroundColor: AppColors.orange,
         foregroundColor: Colors.white,
       ),
-      body: ValueListenableBuilder<List<PlacedOrder>>(
-        valueListenable: OrdersStore.orders,
-        builder: (context, orders, _) {
+      body: StreamBuilder<List<PlacedOrder>>(
+        stream: ordersStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final orders = snapshot.data ?? const <PlacedOrder>[];
+
+          if (user == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 44,
+                      color: AppColors.orange,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Please sign in',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Sign in to view your orders.',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           if (orders.isEmpty) {
             return Center(
               child: Padding(
@@ -64,6 +109,7 @@ class OrderListScreen extends StatelessWidget {
               ),
             );
           }
+
           return ListView.separated(
             padding: const EdgeInsets.all(14),
             itemCount: orders.length,

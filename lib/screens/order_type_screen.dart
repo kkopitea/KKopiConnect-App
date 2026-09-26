@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/order_draft.dart';
+import '../data/order_repository.dart';
 import '../state/cart_store.dart';
 import '../state/orders_store.dart';
 import '../widgets/cloudinary_image.dart';
@@ -189,19 +191,42 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
             ),
             const SizedBox(height: 18),
             FilledButton(
-              onPressed: () {
-                final order = OrdersStore.createOrder(
-                  items: drafts,
-                  fulfillment: _pickup ? 'Pickup' : 'Dine In',
-                  paymentMethod: _paymentMethod,
-                  instructions: _noteController.text.trim(),
-                );
-                CartStore.clear();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => OrderConfirmationScreen(order: order),
-                  ),
-                );
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please sign in before placing an order.'),
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  final order = OrdersStore.createOrder(
+                    items: drafts,
+                    fulfillment: _pickup ? 'Pickup' : 'Dine In',
+                    paymentMethod: _paymentMethod,
+                    instructions: _noteController.text.trim(),
+                  );
+
+                  await FirestoreOrderRepository().saveOrder(user.uid, order);
+                  CartStore.clear();
+
+                  if (!context.mounted) return;
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => OrderConfirmationScreen(order: order),
+                    ),
+                  );
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Could not save your order: $error'),
+                    ),
+                  );
+                }
               },
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.orange,

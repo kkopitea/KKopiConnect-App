@@ -21,7 +21,7 @@ class FirestoreOrderRepository implements OrderRepository {
   final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> _ordersFor(String userId) =>
-      _firestore.collection('users').doc(userId).collection('orders');
+      _firestore.collection('orders').doc(userId).collection('orders');
 
   @override
   Future<void> saveOrder(String userId, PlacedOrder order) async {

@@ -1,13 +1,23 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
 import 'package:kkopiconnect_app/data/placed_order.dart';
+import 'package:kkopiconnect_app/firebase_options.dart';
 import 'package:kkopiconnect_app/screens/cart_screen.dart';
 import 'package:kkopiconnect_app/state/cart_store.dart';
 import 'package:kkopiconnect_app/state/orders_store.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  });
+
   setUp(() {
     CartStore.clear();
     OrdersStore.orders.value = <PlacedOrder>[];
