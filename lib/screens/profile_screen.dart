@@ -2,13 +2,27 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import 'categories_screen.dart';
 import 'login_screen_redesign.dart';
+import 'notifications_screen.dart';
+import 'order_list_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _savedAddress = '';
+  String _paymentMethod = 'Pay At The Counter';
+
+  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = _displayNameFor(user);
+    final email = user?.email ?? 'No email address';
     final items = [
       ('My Orders', Icons.receipt_long_rounded),
       ('My Address', Icons.location_on_rounded),
@@ -23,165 +37,115 @@ class ProfileScreen extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 1080,
-              maxHeight: 2400,
-            ),
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(color: Colors.white),
-              child: Column(
-                children: [
+            constraints: const BoxConstraints(maxWidth: 1080, maxHeight: 2400),
+            child: Column(
+              children: [
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange,
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          if (Navigator.canPop(context)) Navigator.pop(context);
-                        },
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Profile',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 40),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 52,
-                                height: 52,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.orange,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.person, color: Colors.white, size: 28),
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Username',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'username@example.com',
-                                      style: TextStyle(
-                                        color: Color(0xFF666666),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: items.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFE9E9E9)),
-                          itemBuilder: (context, index) {
-                            final item = items[index];
-                            return Container(
-                              color: Colors.white,
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                leading: Icon(item.$2, color: AppColors.orange),
-                                title: Text(
-                                  item.$1,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF666666)),
-                              ),
-                            );
-                          },
-                        ),
-                        const Spacer(),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                              onPressed: () async {
-                                try {
-                                  await FirebaseAuth.instance.signOut();
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                    (route) => false,
-                                  );
-                                } on FirebaseAuthException catch (error) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Unable to log out: ${error.message ?? 'Please try again.'}')),
-                                  );
-                                }
-                              },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.orange,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(52),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              'Log out',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  color: AppColors.orange,
+                  child: const Text(
+                    'Settings',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                ],
-              ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE8E8E8)),
+                        ),
+                        child: Row(
+                          children: [
+                            _AccountAvatar(
+                              displayName: displayName,
+                              photoUrl: user?.photoURL,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    email,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF666666),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      for (final item in items) ...[
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 2,
+                          ),
+                          leading: Icon(item.$2, color: AppColors.orange),
+                          title: Text(
+                            item.$1,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                          subtitle: _subtitleFor(item.$1),
+                          trailing: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Color(0xFF666666),
+                          ),
+                          onTap: () => _handleMenuTap(context, item.$1),
+                        ),
+                        const Divider(height: 1, color: Color(0xFFE9E9E9)),
+                      ],
+                      const SizedBox(height: 18),
+                      ElevatedButton.icon(
+                        onPressed: _logOut,
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Log out'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.orange,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(52),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -189,4 +153,237 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  String _displayNameFor(User? user) {
+    final name = user?.displayName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final email = user?.email;
+    if (email != null && email.contains('@')) {
+      return email.split('@').first.replaceAll(RegExp(r'[._-]+'), ' ');
+    }
+    return 'Your account';
+  }
+
+  Widget? _subtitleFor(String title) => switch (title) {
+    'My Address' => Text(
+      _savedAddress.isEmpty ? 'Add a delivery address' : _savedAddress,
+    ),
+    'Payment Methods' => Text(_paymentMethod),
+    _ => null,
+  };
+
+  Future<void> _handleMenuTap(BuildContext context, String title) async {
+    switch (title) {
+      case 'My Orders':
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+        );
+        return;
+      case 'My Address':
+        await _editAddress(context);
+        return;
+      case 'Payment Methods':
+        await _selectPaymentMethod(context);
+        return;
+      case 'Favorites':
+        await _showFavorites(context);
+        return;
+      case 'Notifications':
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+        );
+        return;
+      case 'Help & Support':
+        await _showHelp(context);
+        return;
+    }
+  }
+
+  Future<void> _editAddress(BuildContext context) async {
+    final controller = TextEditingController(text: _savedAddress);
+    final address = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('My Address'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Delivery address',
+            hintText: 'Enter your address',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (address != null && mounted) setState(() => _savedAddress = address);
+  }
+
+  Future<void> _selectPaymentMethod(BuildContext context) async {
+    var selectedMethod = _paymentMethod;
+    final method = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Payment Methods'),
+          content: RadioGroup<String>(
+            groupValue: selectedMethod,
+            onChanged: (value) {
+              if (value != null) {
+                setDialogState(() => selectedMethod = value);
+              }
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in ['Pay At The Counter', 'Gcash'])
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(option),
+                    value: option,
+                    activeColor: AppColors.orange,
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, selectedMethod),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (method != null && mounted) setState(() => _paymentMethod = method);
+  }
+
+  Future<void> _showFavorites(BuildContext context) async {
+    final browseCategories = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Favorites'),
+        content: const Text('You have not saved any favorite items yet.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Browse categories'),
+          ),
+        ],
+      ),
+    );
+    if (browseCategories == true && context.mounted) {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
+    }
+  }
+
+  Future<void> _showHelp(BuildContext context) async {
+    final viewOrders = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Help & Support'),
+        content: const Text(
+          'For help with a recent purchase, review the status in My Orders.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('View orders'),
+          ),
+        ],
+      ),
+    );
+    if (viewOrders == true && context.mounted) {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const OrderListScreen()));
+    }
+  }
+
+  Future<void> _logOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to log out: ${error.message ?? 'Please try again.'}',
+          ),
+        ),
+      );
+    }
+  }
+}
+
+class _AccountAvatar extends StatelessWidget {
+  const _AccountAvatar({required this.displayName, required this.photoUrl});
+
+  final String displayName;
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = photoUrl?.trim();
+    if (imageUrl == null || imageUrl.isEmpty) return _fallbackAvatar();
+
+    return ClipOval(
+      child: Image.network(
+        imageUrl,
+        width: 56,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
+      ),
+    );
+  }
+
+  Widget _fallbackAvatar() {
+    final trimmedName = displayName.trim();
+    final initial = trimmedName.isEmpty ? 'U' : trimmedName[0].toUpperCase();
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: AppColors.orange,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 }

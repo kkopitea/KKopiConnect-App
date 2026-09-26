@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/order_draft.dart';
+import 'cart_screen.dart';
+import 'categories_screen.dart';
 import 'order_confirmation_screen.dart';
+import 'order_list_screen.dart';
+import 'profile_screen.dart';
 
 class OrderTypeScreen extends StatefulWidget {
-  const OrderTypeScreen({super.key});
+  const OrderTypeScreen({super.key, required this.draft});
+
+  final OrderDraft draft;
 
   @override
   State<OrderTypeScreen> createState() => _OrderTypeScreenState();
 }
 
 class _OrderTypeScreenState extends State<OrderTypeScreen> {
-  bool receiveInStore = true;
-  bool payAtCounter = true;
-  final TextEditingController _noteController = TextEditingController();
+  bool _pickup = true;
+  String _paymentMethod = 'Pay At The Counter';
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -23,370 +36,338 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final draft = widget.draft;
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
+      appBar: AppBar(
+        title: const Text('Order type & Payment method'),
+        backgroundColor: AppColors.orange,
+        foregroundColor: Colors.white,
+      ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 1080,
-                maxHeight: 2400,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(26),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 10,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text(
+              'How would you like to receive your order?',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _ReceiveOption(
+                    icon: Icons.table_restaurant_rounded,
+                    title: 'Dine In',
+                    subtitle: 'Enjoy in our store',
+                    selected: !_pickup,
+                    onTap: () => setState(() => _pickup = false),
+                  ),
                 ),
-                child: Column(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ReceiveOption(
+                    icon: Icons.delivery_dining_rounded,
+                    title: 'Place Order',
+                    subtitle: 'Ready for pickup',
+                    selected: _pickup,
+                    onTap: () => setState(() => _pickup = true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Payment Method',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE1E1E1)),
+              ),
+              child: RadioGroup<String>(
+                groupValue: _paymentMethod,
+                onChanged: (value) {
+                  if (value != null) setState(() => _paymentMethod = value);
+                },
+                child: const Column(
                   children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
-                    decoration: const BoxDecoration(
-                      color: AppColors.orange,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+                    RadioListTile<String>(
+                      value: 'Pay At The Counter',
+                      title: Text(
+                        'Pay At The Counter',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.orange,
                     ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Order type & Payment',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 40),
-                      ],
+                    Divider(height: 1),
+                    RadioListTile<String>(
+                      value: 'Gcash',
+                      title: Text('Gcash', style: TextStyle(fontSize: 13)),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.orange,
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'How would you like to receive your order?',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => receiveInStore = true),
-                                child: Container(
-                                  height: 126,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: receiveInStore ? AppColors.orangeTint : Colors.white,
-                                    border: Border.all(
-                                      color: receiveInStore ? AppColors.orange : const Color(0xFFDDDDDD),
-                                      width: receiveInStore ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.storefront_rounded, size: 42, color: Colors.black),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Dine in',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      const Text(
-                                        'Enjoy in our store',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      if (receiveInStore)
-                                        const Icon(Icons.check_circle_rounded, color: AppColors.orange, size: 20),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => receiveInStore = false),
-                                child: Container(
-                                  height: 126,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: !receiveInStore ? AppColors.orangeTint : Colors.white,
-                                    border: Border.all(
-                                      color: !receiveInStore ? AppColors.orange : const Color(0xFFDDDDDD),
-                                      width: !receiveInStore ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.delivery_dining_rounded, size: 42, color: Colors.black),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Place Order',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      const Text(
-                                        'Ready for pickup',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF666666),
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      if (!receiveInStore)
-                                        const Icon(Icons.check_circle_rounded, color: AppColors.orange, size: 20),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Payment Method',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFDDDDDD)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () => setState(() => payAtCounter = true),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  child: Row(
-                                    children: [
-                                      Checkbox(
-                                        value: payAtCounter,
-                                        activeColor: AppColors.orange,
-                                        onChanged: (value) => setState(() => payAtCounter = value ?? true),
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      const Expanded(
-                                        child: Text(
-                                          'Pay At The Counter',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                              GestureDetector(
-                                onTap: () => setState(() => payAtCounter = false),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  child: Row(
-                                    children: [
-                                      Checkbox(
-                                        value: !payAtCounter,
-                                        activeColor: AppColors.orange,
-                                        onChanged: (value) => setState(() => payAtCounter = !(value ?? false)),
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      const Expanded(
-                                        child: Text(
-                                          'Gcash',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Special Instructions (Optional)',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _noteController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            hintText: 'e.g. Less ice, extra creamy...',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.orange, width: 1.5),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Text(
-                              'Total Payment',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                            Text(
-                              'P120',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const OrderConfirmationScreen(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.orange,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(54),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              'Place Order',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    color: Colors.white,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _bottomNavItem(Icons.home_rounded, 'Home', true),
-                        _bottomNavItem(Icons.category_rounded, 'Categories', false),
-                        _bottomNavItem(Icons.shopping_bag_outlined, 'Cart', false),
-                        _bottomNavItem(Icons.receipt_long_rounded, 'Orders', false),
-                        _bottomNavItem(Icons.settings_rounded, 'Settings', false),
-                      ],
-                    ),
-                  ),
                   ],
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 18),
+            const Text(
+              'Special Instructions (Optional)',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _noteController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'e.g. Less ice, extra creamy...',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.orange,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          draft.product.imageAsset,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${draft.product.name} × ${draft.quantity}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Text(
+                        'P${draft.total}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                  if (draft.addOns.isNotEmpty ||
+                      draft.addIns.isNotEmpty ||
+                      draft.sugar != '50%' ||
+                      draft.ice != '50%') ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        [
+                          '${draft.size} · ${draft.sugar} sugar · ${draft.ice} ice',
+                          if (draft.addIns.isNotEmpty) draft.addIns.join(', '),
+                          if (draft.addOns.isNotEmpty) draft.addOns.join(', '),
+                        ].join(' · '),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Payment',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        'P${draft.total}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OrderConfirmationScreen(draft: draft),
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.orange,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(54),
+              ),
+              child: const Text(
+                'Place Order',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 2,
+        selectedItemColor: AppColors.orange,
+        unselectedItemColor: AppColors.iconMuted,
+        onTap: (index) => _openNavigation(context, index),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.category_rounded),
+            label: 'Categories',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag_outlined),
+            label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
 
-  Widget _bottomNavItem(IconData icon, String label, bool active) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(
-        children: [
-          Icon(icon, color: active ? AppColors.orange : const Color(0xFF444444), size: 22),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: active ? AppColors.orange : const Color(0xFF444444),
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+  void _openNavigation(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        break;
+      case 1:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
+        );
+        break;
+      case 2:
+        Navigator.of(context)
+            .push(MaterialPageRoute<void>(builder: (_) => const CartScreen()));
+        break;
+      case 3:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+        );
+        break;
+      case 4:
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
+        break;
+    }
+  }
+}
+
+class _ReceiveOption extends StatelessWidget {
+  const _ReceiveOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 128),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.orangeTint : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.orange : const Color(0xFFE0E0E0),
+              width: selected ? 2 : 1,
             ),
           ),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 38, color: Colors.black87),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              if (selected)
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    Icons.check_circle,
+                    color: AppColors.orange,
+                    size: 18,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

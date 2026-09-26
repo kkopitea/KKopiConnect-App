@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'app_colors.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 
@@ -21,7 +22,13 @@ class KkopiTeaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF7900)),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.orange),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.orange,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+        ),
       ),
       home: const SplashScreen(),
     );

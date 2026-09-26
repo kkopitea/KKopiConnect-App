@@ -1,321 +1,365 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
+import '../data/menu_catalog.dart';
+import '../data/order_draft.dart';
+import 'customize_drink_screen.dart';
 import 'order_type_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
-  const ProductDetailScreen({super.key});
+  const ProductDetailScreen({super.key, required this.product});
+
+  final MenuProduct product;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  int quantity = 1;
-  String selectedSize = 'Medium';
-  String selectedSugar = '50%';
-  String selectedIce = '50%';
-  final List<String> sugarOptions = ['0%', '25%', '50%', '75%', '100%'];
-  final List<String> iceOptions = ['0%', '25%', '50%', '75%', '100%'];
+  int _quantity = 1;
+  String _selectedSize = 'Medium';
+  int _selectedPrice = 0;
+  bool _isFavorite = false;
+
+  List<(String, int)> get _sizes => [
+    ('Regular', widget.product.price),
+    ('Medium', widget.product.price + 20),
+    ('Large', widget.product.price + 50),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPrice = widget.product.price + 20;
+  }
+
+  OrderDraft get _draft => OrderDraft(
+    product: widget.product,
+    quantity: _quantity,
+    size: _selectedSize,
+    sizePrice: _selectedPrice,
+  );
 
   @override
   Widget build(BuildContext context) {
+    final product = widget.product;
     return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 1080,
-                maxHeight: 2400,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F2F2),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black38,
-                        blurRadius: 10,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                    Container(
-                      height: 360,
-                      padding: const EdgeInsets.only(top: 14, left: 14, right: 14),
-                      decoration: const BoxDecoration(
-                        color: AppColors.orange,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                onPressed: () {},
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.favorite_border_rounded, color: Colors.white),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.share_rounded, color: Colors.white),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/welcome_drink.png',
-                                width: 220,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ),
-                        ],
+        child: Column(
+          children: [
+            SizedBox(
+              height: 300,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFFFA338), AppColors.orange],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                      child: Column(
+                    child: Center(
+                      child: Image.asset(
+                        product.imageAsset,
+                        width: 220,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    left: 8,
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: _isFavorite
+                              ? 'Remove favorite'
+                              : 'Add favorite',
+                          onPressed: () =>
+                              setState(() => _isFavorite = !_isFavorite),
+                          icon: Icon(
+                            _isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Share product',
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: product.name),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Product name copied'),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.share_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(22),
+                    ),
+                  ),
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Vanilla Americano Latte Tea',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'A refreshing blend of bold espresso, creamy milk,\nand sweet vanilla over chewy boba pearls.',
-                            style: TextStyle(
-                              color: Color(0xFF666666),
-                              fontSize: 13,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: const [
-                              Icon(Icons.star_rounded, color: Color(0xFFFFA51D), size: 20),
-                              SizedBox(width: 4),
-                              Text(
-                                '4.6',
+                          if (product.isBestSeller)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.orange,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Best seller',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                '(321)',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF666666),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'P50',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: const [
-                                  Icon(Icons.star_rounded, color: AppColors.orange, size: 20),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Best seller',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
                                   color: Colors.white,
-                                  border: Border.all(color: const Color(0xFFDDDDDD)),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () => setState(() => quantity = quantity > 1 ? quantity - 1 : 1),
-                                      icon: const Icon(Icons.remove, size: 18),
-                                      padding: const EdgeInsets.all(8),
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                    SizedBox(
-                                      width: 28,
-                                      child: Text(
-                                        quantity.toString(),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => setState(() => quantity++),
-                                      icon: const Icon(Icons.add, size: 18),
-                                      padding: const EdgeInsets.all(8),
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                  ],
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                            ],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        product.description,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
+                            color: Color(0xFFFFA51D),
+                            size: 19,
                           ),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'Sizes',
+                          SizedBox(width: 4),
+                          Text(
+                            '4.6',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '(320)',
                             style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 62,
-                            child: Row(
-                              children: ['Regular\nP50', 'Medium\nP70', 'Large\nP100']
-                                  .map((option) {
-                                    final chosen = selectedSize == option.split('\n').first;
-                                    return Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => selectedSize = option.split('\n').first),
-                                        child: Container(
-                                          margin: const EdgeInsets.only(right: 8),
-                                          padding: const EdgeInsets.symmetric(vertical: 10),
-                                          decoration: BoxDecoration(
-                                              color: chosen ? AppColors.orangeTint : Colors.white,
-                                            border: Border.all(
-                                              color: chosen ? AppColors.orange : const Color(0xFFE6E6E6),
-                                              width: chosen ? 2 : 1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            option,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: chosen ? AppColors.orange : Colors.black,
-                                              fontWeight: chosen ? FontWeight.w800 : FontWeight.w600,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.orange,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(52),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text(
-                                'Customize',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const OrderTypeScreen(),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.orange,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(52),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text(
-                                'Add to cart',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
+                              color: AppColors.textMuted,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'P$_selectedPrice',
+                        style: const TextStyle(
+                          color: AppColors.orange,
+                          fontSize: 27,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Quantity',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          _QuantityControl(
+                            quantity: _quantity,
+                            onDecrease: () => setState(
+                              () =>
+                                  _quantity = _quantity > 1 ? _quantity - 1 : 1,
+                            ),
+                            onIncrease: () => setState(() => _quantity++),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Sizes',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          for (final option in _sizes)
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 7),
+                                child: InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedSize = option.$1;
+                                    _selectedPrice = option.$2;
+                                  }),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _selectedSize == option.$1
+                                          ? AppColors.orangeTint
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: _selectedSize == option.$1
+                                            ? AppColors.orange
+                                            : const Color(0xFFE1E1E1),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          option.$1,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        Text(
+                                          'P${option.$2}',
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CustomizeDrinkScreen(draft: _draft),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.orange,
+                          side: const BorderSide(color: AppColors.orange),
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                        child: const Text('Customize'),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => OrderTypeScreen(draft: _draft),
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.orange,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(50),
+                        ),
+                        child: const Text('Add to cart'),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _QuantityControl extends StatelessWidget {
+  const _QuantityControl({
+    required this.quantity,
+    required this.onDecrease,
+    required this.onIncrease,
+  });
+
+  final int quantity;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE2E2E2)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: onDecrease,
+            icon: const Icon(Icons.remove, size: 16),
+            visualDensity: VisualDensity.compact,
+          ),
+          Text(
+            '$quantity',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          IconButton(
+            onPressed: onIncrease,
+            icon: const Icon(Icons.add, size: 16),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
       ),
     );
   }
