@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
+import 'chatbot_screen.dart';
 import 'home_screen.dart';
 import 'order_list_screen.dart';
 import 'profile_screen.dart';
@@ -44,6 +45,22 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
         bottom: false,
         child: IndexedStack(index: _selectedIndex, children: _pages),
       ),
+      floatingActionButton: _selectedIndex == 4
+          ? null
+          : FloatingActionButton.extended(
+              heroTag: 'main-ai-chat-fab',
+              tooltip: 'Chat with KKOPI.TEA Assistant',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ChatbotScreen()),
+              ),
+              backgroundColor: AppColors.orange,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.smart_toy_rounded, size: 25),
+              label: const Text(
+                'KKOPI.BOT',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
       bottomNavigationBar: Container(
         color: Colors.white,
         padding: EdgeInsets.fromLTRB(4, 7, 4, bottomInset + 7),

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import 'terms_conditions_screen.dart';
 import 'main_interface_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -12,7 +13,8 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProviderStateMixin {
+class _RegisterScreenState extends State<RegisterScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -30,10 +32,22 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _cardController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    final cardCurve = CurvedAnimation(parent: _cardController, curve: Curves.easeInOutCubic);
-    _cardSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.18), end: Offset.zero).animate(cardCurve);
-    _imageSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.24), end: Offset.zero).animate(cardCurve);
+    _cardController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    final cardCurve = CurvedAnimation(
+      parent: _cardController,
+      curve: Curves.easeInOutCubic,
+    );
+    _cardSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(cardCurve);
+    _imageSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.24),
+      end: Offset.zero,
+    ).animate(cardCurve);
     _cardFadeAnimation = Tween<double>(begin: 0, end: 1).animate(cardCurve);
     _cardController.forward();
   }
@@ -41,16 +55,21 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please agree to the Terms & Conditions.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms & Conditions.'),
+        ),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
       await credential.user?.updateDisplayName(_nameController.text.trim());
       final user = credential.user;
       if (user != null) {
@@ -75,7 +94,8 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         'weak-password' => 'Please choose a stronger password.',
         _ => 'Unable to create your account.',
       };
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -106,34 +126,48 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final heroHeight = (constraints.maxHeight * 0.45).clamp(320.0, 390.0);
+            final heroHeight = (constraints.maxHeight * 0.45).clamp(
+              320.0,
+              390.0,
+            );
             return SizedBox(
               height: heroHeight + 520,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  _HeroHeader(width: constraints.maxWidth, height: heroHeight, slideAnimation: _imageSlideAnimation ?? const AlwaysStoppedAnimation<Offset>(Offset.zero)),
+                  _HeroHeader(
+                    width: constraints.maxWidth,
+                    height: heroHeight,
+                    slideAnimation:
+                        _imageSlideAnimation ??
+                        const AlwaysStoppedAnimation<Offset>(Offset.zero),
+                  ),
                   Positioned(
                     top: heroHeight - 120,
                     left: 0,
                     right: 0,
                     child: SlideTransition(
-                    position: _cardSlideAnimation,
-                    child: _RegisterCard(
-                      formKey: _formKey,
-                      nameController: _nameController,
-                      emailController: _emailController,
-                      phoneController: _phoneController,
-                      passwordController: _passwordController,
-                      obscurePassword: _obscurePassword,
-                      acceptedTerms: _acceptedTerms,
-                      isLoading: _isLoading,
-                      fadeAnimation: _cardFadeAnimation ?? const AlwaysStoppedAnimation<double>(1),
-                      onBack: _handleBack,
-                      onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                      onAcceptedTermsChanged: (value) => setState(() => _acceptedTerms = value),
-                      onRegister: _register,
-                    ),
+                      position: _cardSlideAnimation,
+                      child: _RegisterCard(
+                        formKey: _formKey,
+                        nameController: _nameController,
+                        emailController: _emailController,
+                        phoneController: _phoneController,
+                        passwordController: _passwordController,
+                        obscurePassword: _obscurePassword,
+                        acceptedTerms: _acceptedTerms,
+                        isLoading: _isLoading,
+                        fadeAnimation:
+                            _cardFadeAnimation ??
+                            const AlwaysStoppedAnimation<double>(1),
+                        onBack: _handleBack,
+                        onTogglePassword: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        onAcceptedTermsChanged: (value) =>
+                            setState(() => _acceptedTerms = value),
+                        onRegister: _register,
+                      ),
                     ),
                   ),
                 ],
@@ -144,11 +178,14 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       ),
     );
   }
-
 }
 
 class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({required this.width, required this.height, required this.slideAnimation});
+  const _HeroHeader({
+    required this.width,
+    required this.height,
+    required this.slideAnimation,
+  });
   final double width;
   final double height;
   final Animation<Offset> slideAnimation;
@@ -159,7 +196,11 @@ class _HeroHeader extends StatelessWidget {
       height: height,
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.orange, AppColors.orangeLight]),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.orange, AppColors.orangeLight],
+        ),
       ),
       child: Stack(
         clipBehavior: Clip.none,
@@ -172,7 +213,15 @@ class _HeroHeader extends StatelessWidget {
               children: [
                 const _BrandLogo(),
                 const SizedBox(height: 2),
-                Text('COFFEE • MILKTEA • GOOD VIBES', style: TextStyle(color: Colors.black, fontSize: width < 340 ? 8 : 10, fontWeight: FontWeight.w600, letterSpacing: 0.7)),
+                Text(
+                  'COFFEE • MILKTEA • GOOD VIBES',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: width < 340 ? 8 : 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.7,
+                  ),
+                ),
               ],
             ),
           ),
@@ -182,7 +231,12 @@ class _HeroHeader extends StatelessWidget {
             bottom: 20,
             child: SlideTransition(
               position: slideAnimation,
-              child: Image.asset('assets/images/login_drinks.png', height: height * 0.72, fit: BoxFit.contain, semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks'),
+              child: Image.asset(
+                'assets/images/login_drinks.png',
+                height: height * 0.72,
+                fit: BoxFit.contain,
+                semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks',
+              ),
             ),
           ),
         ],
@@ -198,10 +252,21 @@ class _BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: const TextSpan(
-        style: TextStyle(fontSize: 42, height: 0.95, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+        style: TextStyle(
+          fontSize: 42,
+          height: 0.95,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.5,
+        ),
         children: [
-          TextSpan(text: 'KKOPI', style: TextStyle(color: Colors.white)),
-          TextSpan(text: '.TEA', style: TextStyle(color: Colors.black)),
+          TextSpan(
+            text: 'KKOPI',
+            style: TextStyle(color: Colors.white),
+          ),
+          TextSpan(
+            text: '.TEA',
+            style: TextStyle(color: Colors.black),
+          ),
         ],
       ),
     );
@@ -244,7 +309,10 @@ class _RegisterCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(42, 18, 42, 10),
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       child: Form(
         key: formKey,
         child: FadeTransition(
@@ -252,60 +320,153 @@ class _RegisterCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            Row(
-              children: [
-                IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back, color: Colors.black), padding: EdgeInsets.zero),
-                const Expanded(child: Text('Create an account', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
-                const SizedBox(width: 48),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _field(nameController, 'Full Name', Icons.person_outline, validator: _required),
-            const SizedBox(height: 14),
-            _field(emailController, 'Email Address', Icons.email_outlined, keyboardType: TextInputType.emailAddress, validator: (value) => value != null && value.contains('@') ? null : 'Enter a valid email'),
-            const SizedBox(height: 14),
-            _field(phoneController, 'Phone number', Icons.phone_android_outlined, keyboardType: TextInputType.phone, validator: _required),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              decoration: _inputDecoration('Password', Icons.lock_outline).copyWith(
-                suffixIcon: IconButton(onPressed: onTogglePassword, icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: const Color(0xFF888888))),
-              ),
-              validator: (value) => value != null && value.length >= 6 ? null : 'Use at least 6 characters',
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Checkbox(value: acceptedTerms, activeColor: AppColors.orange, onChanged: (value) => onAcceptedTermsChanged(value ?? false)),
-                const Expanded(child: Text.rich(TextSpan(children: [TextSpan(text: 'I agree to the '), TextSpan(text: 'Terms & Conditions', style: TextStyle(color: AppColors.orange, fontWeight: FontWeight.w800))]), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 46,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : onRegister,
-                style: _buttonStyle(),
-                child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Already have an account? ', style: TextStyle(fontSize: 11)),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
                     padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Log in', style: TextStyle(color: AppColors.orange, fontSize: 11, fontWeight: FontWeight.w800)),
+                  const Expanded(
+                    child: Text(
+                      'Create an account',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _field(
+                nameController,
+                'Full Name',
+                Icons.person_outline,
+                validator: _required,
+              ),
+              const SizedBox(height: 14),
+              _field(
+                emailController,
+                'Email Address',
+                Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => value != null && value.contains('@')
+                    ? null
+                    : 'Enter a valid email',
+              ),
+              const SizedBox(height: 14),
+              _field(
+                phoneController,
+                'Phone number',
+                Icons.phone_android_outlined,
+                keyboardType: TextInputType.phone,
+                validator: _required,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                decoration: _inputDecoration('Password', Icons.lock_outline)
+                    .copyWith(
+                      suffixIcon: IconButton(
+                        onPressed: onTogglePassword,
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: const Color(0xFF888888),
+                        ),
+                      ),
+                    ),
+                validator: (value) => value != null && value.length >= 6
+                    ? null
+                    : 'Use at least 6 characters',
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Checkbox(
+                    value: acceptedTerms,
+                    activeColor: AppColors.orange,
+                    onChanged: (value) =>
+                        onAcceptedTermsChanged(value ?? false),
+                  ),
+                  Expanded(
+                    child: Wrap(
+                      children: [
+                        const Text('I agree to the '),
+                        InkWell(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const TermsConditionsScreen(),
+                            ),
+                          ),
+                          child: const Text(
+                            'Terms & Conditions',
+                            style: TextStyle(
+                              color: AppColors.orange,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : onRegister,
+                  style: _buttonStyle(),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Register',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Already have an account? ',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      'Log in',
+                      style: TextStyle(
+                        color: AppColors.orange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -314,11 +475,23 @@ class _RegisterCard extends StatelessWidget {
   }
 }
 
-Widget _field(TextEditingController controller, String hint, IconData icon, {TextInputType? keyboardType, String? Function(String?)? validator}) {
-  return TextFormField(controller: controller, keyboardType: keyboardType, decoration: _inputDecoration(hint, icon), validator: validator);
+Widget _field(
+  TextEditingController controller,
+  String hint,
+  IconData icon, {
+  TextInputType? keyboardType,
+  String? Function(String?)? validator,
+}) {
+  return TextFormField(
+    controller: controller,
+    keyboardType: keyboardType,
+    decoration: _inputDecoration(hint, icon),
+    validator: validator,
+  );
 }
 
-String? _required(String? value) => value == null || value.trim().isEmpty ? 'This field is required' : null;
+String? _required(String? value) =>
+    value == null || value.trim().isEmpty ? 'This field is required' : null;
 
 InputDecoration _inputDecoration(String hint, IconData icon) {
   return InputDecoration(
@@ -327,11 +500,22 @@ InputDecoration _inputDecoration(String hint, IconData icon) {
     prefixIcon: Icon(icon, color: const Color(0xFF888888), size: 22),
     filled: true,
     fillColor: const Color(0xFFF7F7F7),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD8D8D8))),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD8D8D8))),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFD8D8D8)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFD8D8D8)),
+    ),
   );
 }
 
 ButtonStyle _buttonStyle() {
-  return ElevatedButton.styleFrom(backgroundColor: AppColors.orange, foregroundColor: Colors.white, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)));
+  return ElevatedButton.styleFrom(
+    backgroundColor: AppColors.orange,
+    foregroundColor: Colors.white,
+    elevation: 3,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+  );
 }

@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
 import '../widgets/cloudinary_image.dart';
+import '../widgets/curved_content_page.dart';
 import 'categories_screen.dart';
 import 'order_type_screen.dart';
 
@@ -12,13 +13,8 @@ class CartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('My Cart'),
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-      ),
+    return CurvedContentPage(
+      title: 'My Cart',
       body: ValueListenableBuilder<List<OrderDraft>>(
         valueListenable: CartStore.items,
         builder: (context, items, _) {

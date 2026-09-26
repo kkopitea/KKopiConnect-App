@@ -63,7 +63,7 @@ class CategoryProductsScreen extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE8E8E8)),
@@ -75,8 +75,8 @@ class CategoryProductsScreen extends StatelessWidget {
                             child: CloudinaryImage(
                               url: product.imageUrl,
                               fallbackAsset: product.imageAsset,
-                              width: 62,
-                              height: 62,
+                              width: 88,
+                              height: 88,
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -88,7 +88,7 @@ class CategoryProductsScreen extends StatelessWidget {
                                 Text(
                                   product.name,
                                   style: const TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -98,7 +98,7 @@ class CategoryProductsScreen extends StatelessWidget {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 14,
                                     color: AppColors.textMuted,
                                   ),
                                 ),
@@ -107,7 +107,7 @@ class CategoryProductsScreen extends StatelessWidget {
                                   'P${product.price}',
                                   style: const TextStyle(
                                     color: AppColors.orange,
-                                    fontSize: 13,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -119,7 +119,11 @@ class CategoryProductsScreen extends StatelessWidget {
                             onPressed: () {
                               CartStore.add(OrderDraft(product: product));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${product.name} added to cart')),
+                                SnackBar(
+                                  content: Text(
+                                    '${product.name} added to cart',
+                                  ),
+                                ),
                               );
                             },
                             style: IconButton.styleFrom(

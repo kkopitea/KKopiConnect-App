@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/advertisement.dart';
 import '../data/menu_catalog.dart';
+import 'category_products_screen.dart';
 import 'notifications_screen.dart';
 import 'product_detail_screen.dart';
+import '../widgets/advertisement_carousel.dart';
 import '../widgets/cloudinary_image.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,134 +22,120 @@ class _HomeScreenState extends State<HomeScreen> {
   String _branch = 'Urdaneta City';
 
   static const _homeCategories = [
-    (Icons.local_drink_outlined, 'Milk Tea'),
-    (Icons.coffee_outlined, 'Coffee'),
-    (Icons.local_cafe_outlined, 'Fruit Tea'),
-    (Icons.sell_outlined, 'Add-ons'),
-    (Icons.checkroom_outlined, 'Merch'),
+    (Icons.local_drink_outlined, 'milk-tea', 'Milktea'),
+    (Icons.coffee_outlined, 'coffee', 'Coffee'),
+    (Icons.fastfood_outlined, 'snacks', 'Snacks'),
+    (Icons.soup_kitchen_outlined, 'frappe', 'Frappe'),
+    (Icons.emoji_food_beverage_outlined, 'fruit-tea', 'Fruit Tea'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.orange,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-              decoration: const BoxDecoration(
-                color: AppColors.orange,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(18),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 96,
+              child: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'KKOPI.TEA',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 23,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Notifications',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                          size: 25,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'KKOPI.TEA',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Notifications',
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const NotificationsScreen(),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.white,
-                      size: 25,
-                    ),
-                  ),
-                ],
-              ),
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-                children: [
-                  _BranchSelector(branch: _branch, onTap: _chooseBranch),
-                  const SizedBox(height: 14),
-                  _HomePromoBanner(onOrderNow: _orderNow),
-                  const SizedBox(height: 18),
-                  _SectionHeading(
-                    title: 'Categories',
-                    onSeeAll: widget.onSeeAllCategories,
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 98,
-                    child: Row(
-                      children: [
-                        for (final category in _homeCategories)
-                          Expanded(
-                            child: _HomeCategoryButton(
-                              icon: category.$1,
-                              label: category.$2,
-                              onTap: widget.onSeeAllCategories,
+            Positioned.fill(
+              top: 96,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
+                  children: [
+                    _BranchSelector(branch: _branch, onTap: _chooseBranch),
+                    const SizedBox(height: 14),
+                    AdvertisementCarousel(onSelect: _selectAdvertisement),
+                    const SizedBox(height: 18),
+                    _SectionHeading(
+                      title: 'Categories',
+                      onSeeAll: widget.onSeeAllCategories,
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 116,
+                      child: Row(
+                        children: [
+                          for (final category in _homeCategories)
+                            Expanded(
+                              child: _HomeCategoryButton(
+                                icon: category.$1,
+                                label: category.$3,
+                                onTap: () => _openCategory(category.$2),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _SectionHeading(
-                    title: 'Best Sellers',
-                    onSeeAll: widget.onSeeAllCategories,
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 154,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 3,
-                      separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemBuilder: (context, index) {
-                        final products = [
-                          menuProducts[0],
-                          menuProducts[3],
-                          menuProducts[2],
-                        ];
-                        final labels = [
-                          'Iced Americano',
-                          'White Chocolate Milk Tea',
-                          'Caramel Caffuccino',
-                        ];
-                        final backgrounds = [
-                          const Color(0xFFFFE0AC),
-                          const Color(0xFFFFBF72),
-                          const Color(0xFFCC741C),
-                        ];
-                        return _BestSellerCard(
-                          product: products[index],
-                          label: labels[index],
-                          background: backgrounds[index],
-                          onTap: () => _openProduct(products[index]),
-                        );
-                      },
+                    const SizedBox(height: 16),
+                    _SectionHeading(
+                      title: 'All Products',
+                      onSeeAll: widget.onSeeAllCategories,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 174,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: menuProducts.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
+                        itemBuilder: (context, index) {
+                          final product = menuProducts[index];
+                          return _BestSellerCard(
+                            product: product,
+                            onTap: () => _openProduct(product),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.small(
-        heroTag: 'home-menu-fab',
-        tooltip: 'Browse menu',
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-        onPressed: widget.onSeeAllCategories,
-        child: const Icon(Icons.local_cafe_rounded),
       ),
     );
   }
@@ -182,12 +171,29 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selected != null && mounted) setState(() => _branch = selected);
   }
 
-  void _orderNow() => _openProduct(menuProducts.first);
+  void _selectAdvertisement(Advertisement advertisement) {
+    for (final product in menuProducts) {
+      if (product.id == advertisement.productId) {
+        _openProduct(product);
+        return;
+      }
+    }
+    widget.onSeeAllCategories();
+  }
 
   void _openProduct(MenuProduct product) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ProductDetailScreen(product: product),
+      ),
+    );
+  }
+
+  void _openCategory(String categoryId) {
+    final category = menuCategories.firstWhere((item) => item.id == categoryId);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CategoryProductsScreen(category: category),
       ),
     );
   }
@@ -259,94 +265,6 @@ class _BranchSelector extends StatelessWidget {
   }
 }
 
-class _HomePromoBanner extends StatelessWidget {
-  const _HomePromoBanner({required this.onOrderNow});
-
-  final VoidCallback onOrderNow;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 158,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.orange,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Buy 1, Get 1 Free!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'SIP. SMILE. REPEAT',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Your everyday coffee and milk tea made with love.',
-                  maxLines: 3,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 29,
-                  child: FilledButton(
-                    onPressed: onOrderNow,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      textStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    child: const Text('Order Now!'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 4),
-          Image.asset(
-            'assets/images/login_drinks.png',
-            width: 126,
-            height: 128,
-            fit: BoxFit.contain,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading({required this.title, required this.onSeeAll});
 
@@ -360,7 +278,7 @@ class _SectionHeading extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
         ),
         TextButton(
@@ -371,7 +289,7 @@ class _SectionHeading extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: const Text('See all', style: TextStyle(fontSize: 11)),
+          child: const Text('See all', style: TextStyle(fontSize: 13)),
         ),
       ],
     );
@@ -400,20 +318,20 @@ class _HomeCategoryButton extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               decoration: const BoxDecoration(
                 color: Color(0xFFFFE2BD),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: Colors.black87, size: 23),
+              child: Icon(icon, color: Colors.black87, size: 27),
             ),
             const SizedBox(height: 5),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -423,53 +341,111 @@ class _HomeCategoryButton extends StatelessWidget {
 }
 
 class _BestSellerCard extends StatelessWidget {
-  const _BestSellerCard({
-    required this.product,
-    required this.label,
-    required this.background,
-    required this.onTap,
-  });
+  const _BestSellerCard({required this.product, required this.onTap});
 
   final MenuProduct product;
-  final String label;
-  final Color background;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final category = menuCategories.firstWhere(
+      (item) => item.id == product.categoryId,
+    );
+
     return SizedBox(
-      width: 104,
+      width: 210,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CloudinaryImage(
-                    url: product.imageUrl,
-                    fallbackAsset: product.imageAsset,
-                    fit: BoxFit.contain,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE8E8E8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CloudinaryImage(
+                      url: product.imageUrl,
+                      fallbackAsset: product.imageAsset,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      semanticLabel: product.name,
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              category.icon,
+                              color: AppColors.orange,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                category.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'P${product.price}',
+                          style: const TextStyle(
+                            color: AppColors.orange,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                product.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                product.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -43,22 +43,17 @@ class MenuProduct {
 const menuCategories = <MenuCategory>[
   MenuCategory(
     id: 'milk-tea',
-    name: 'Milk Tea',
+    name: 'Milktea',
     icon: Icons.local_drink_rounded,
   ),
   MenuCategory(id: 'coffee', name: 'Coffee', icon: Icons.coffee_rounded),
+  MenuCategory(id: 'snacks', name: 'Snacks', icon: Icons.fastfood_rounded),
+  MenuCategory(id: 'frappe', name: 'Frappe', icon: Icons.soup_kitchen_rounded),
   MenuCategory(
     id: 'fruit-tea',
     name: 'Fruit Tea',
     icon: Icons.emoji_food_beverage_rounded,
   ),
-  MenuCategory(id: 'boba', name: 'Boba', icon: Icons.icecream_rounded),
-  MenuCategory(
-    id: 'smoothie',
-    name: 'Smoothie',
-    icon: Icons.soup_kitchen_rounded,
-  ),
-  MenuCategory(id: 'snacks', name: 'Snacks', icon: Icons.fastfood_rounded),
 ];
 
 const menuProducts = <MenuProduct>[
@@ -78,7 +73,7 @@ const menuProducts = <MenuProduct>[
     description: 'A refreshing blend of bold espresso, creamy milk, and sweet vanilla over chewy boba pearls.',
     price: 50,
     categoryId: 'milk-tea',
-    categoryIds: ['milk-tea', 'coffee', 'boba'],
+    categoryIds: ['milk-tea', 'coffee'],
     isBestSeller: true,
   ),
   MenuProduct(
@@ -96,7 +91,7 @@ const menuProducts = <MenuProduct>[
     description: 'Classic milk tea served with chewy tapioca pearls.',
     price: 60,
     categoryId: 'milk-tea',
-    categoryIds: ['milk-tea', 'boba'],
+    categoryIds: ['milk-tea'],
     isBestSeller: true,
     isClassic: true,
   ),
@@ -105,8 +100,8 @@ const menuProducts = <MenuProduct>[
     name: 'Oreo Smoothie',
     description: 'A cool and creamy cookie smoothie.',
     price: 90,
-    categoryId: 'smoothie',
-    categoryIds: ['smoothie'],
+    categoryId: 'frappe',
+    categoryIds: ['frappe'],
   ),
   MenuProduct(
     id: 'mango-fruit-tea',

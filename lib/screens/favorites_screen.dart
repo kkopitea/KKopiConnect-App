@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../state/favorites_store.dart';
 import '../widgets/cloudinary_image.dart';
+import '../widgets/curved_content_page.dart';
 import 'product_detail_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -13,13 +14,8 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('Favorites'),
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-      ),
+    return CurvedContentPage(
+      title: 'Favorites',
       body: ValueListenableBuilder<Set<String>>(
         valueListenable: FavoritesStore.productIds,
         builder: (context, favoriteIds, _) {
@@ -96,7 +92,7 @@ class FavoritesScreen extends StatelessWidget {
                   title: Text(
                     product.name,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

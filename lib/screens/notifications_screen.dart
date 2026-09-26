@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../data/placed_order.dart';
 import '../state/orders_store.dart';
+import '../widgets/curved_content_page.dart';
 import 'categories_screen.dart';
 import 'order_list_screen.dart';
 
@@ -16,9 +17,12 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const _filters = ['All', 'Orders', 'Promotion', 'System'];
   String _activeFilter = 'All';
+  final Set<String> _readNotificationIds = {};
+  final Set<String> _dismissedNotificationIds = {};
 
   static const _announcements = <_NotificationItem>[
     _NotificationItem(
+      id: 'promotion-special',
       title: 'Special Promo',
       message: 'Get 10% off your next order.',
       time: 'Yesterday',
@@ -26,6 +30,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       icon: Icons.local_offer_rounded,
     ),
     _NotificationItem(
+      id: 'system-menu',
       title: 'New Menu',
       message: 'Try the new Brown Sugar Pearl Latte.',
       time: 'Sep 24',
@@ -33,6 +38,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       icon: Icons.coffee_rounded,
     ),
     _NotificationItem(
+      id: 'promotion-loyalty',
       title: 'Loyalty Reward',
       message: 'You have earned 20 points this week.',
       time: 'Sep 20',
@@ -43,13 +49,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-      ),
+    return CurvedContentPage(
+      title: 'Notifications',
+      actions: [
+        IconButton(
+          tooltip: 'Mark all as read',
+          onPressed: _markAllAsRead,
+          color: Colors.white,
+          icon: const Icon(Icons.done_all_rounded),
+        ),
+      ],
       body: ValueListenableBuilder<List<PlacedOrder>>(
         valueListenable: OrdersStore.orders,
         builder: (context, orders, _) {
@@ -57,6 +66,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ..._announcements,
             for (final order in orders)
               _NotificationItem(
+                id: 'order-${order.id}',
                 title: 'Order ${order.status}',
                 message:
                     'Order ${order.formattedId} is ${order.status.toLowerCase()}.',
@@ -65,11 +75,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 icon: Icons.receipt_long_rounded,
               ),
           ];
-          final items = _activeFilter == 'All'
+          final filteredItems = _activeFilter == 'All'
               ? notifications
               : notifications
                     .where((item) => item.type == _activeFilter)
                     .toList();
+          final items = filteredItems
+              .where((item) => !_dismissedNotificationIds.contains(item.id))
+              .toList();
 
           return Column(
             children: [
@@ -100,50 +113,95 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final item = items[index];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.orangeTint,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                item.icon,
-                                color: AppColors.orange,
-                                size: 20,
+                          final isRead = _readNotificationIds.contains(item.id);
+                          return Dismissible(
+                            key: ValueKey(item.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 18),
+                              color: const Color(0xFFC62828),
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: Colors.white,
                               ),
                             ),
-                            title: Text(
-                              item.title,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
+                            onDismissed: (_) => setState(
+                              () => _dismissedNotificationIds.add(item.id),
                             ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                item.message,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textMuted,
-                                  height: 1.35,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.orangeTint,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  item.icon,
+                                  color: AppColors.orange,
+                                  size: 20,
                                 ),
                               ),
-                            ),
-                            trailing: Text(
-                              item.time,
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: AppColors.textMuted,
+                              title: Text(
+                                item.title,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isRead
+                                      ? FontWeight.w600
+                                      : FontWeight.w800,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  item.message,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textMuted,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    item.time,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  Icon(
+                                    isRead
+                                        ? Icons.check_circle_rounded
+                                        : Icons.circle,
+                                    size: 10,
+                                    color: isRead
+                                        ? AppColors.textMuted
+                                        : AppColors.orange,
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  if (isRead) {
+                                    _readNotificationIds.remove(item.id);
+                                  } else {
+                                    _readNotificationIds.add(item.id);
+                                  }
+                                });
+                                _openNotification(item);
+                              },
+                              onLongPress: () => setState(
+                                () => _readNotificationIds.add(item.id),
                               ),
                             ),
-                            onTap: () => _openNotification(item),
                           );
                         },
                       ),
@@ -153,6 +211,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         },
       ),
     );
+  }
+
+  void _markAllAsRead() {
+    setState(() {
+      _readNotificationIds.addAll(_announcements.map((item) => item.id));
+      _readNotificationIds.addAll(
+        OrdersStore.orders.value.map((order) => 'order-${order.id}'),
+      );
+    });
   }
 
   void _openNotification(_NotificationItem item) {
@@ -175,6 +242,7 @@ String _dateLabel(DateTime date) {
 
 class _NotificationItem {
   const _NotificationItem({
+    required this.id,
     required this.title,
     required this.message,
     required this.time,
@@ -182,6 +250,7 @@ class _NotificationItem {
     required this.icon,
   });
 
+  final String id;
   final String title;
   final String message;
   final String time;

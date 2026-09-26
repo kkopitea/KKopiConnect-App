@@ -1,12 +1,17 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../app_colors.dart';
+import '../services/cloudinary_service.dart';
 import 'categories_screen.dart';
 import 'favorites_screen.dart';
 import 'login_screen_redesign.dart';
 import 'notifications_screen.dart';
 import 'order_list_screen.dart';
+import 'terms_conditions_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.onNavigateTab});
@@ -19,6 +24,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _paymentMethod = 'Pay At The Counter';
+  bool _isUploadingPhoto = false;
+  Uint8List? _profilePhotoBytes;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ('Favorites', Icons.favorite_border_rounded),
       ('Notifications', Icons.notifications_none_rounded),
       ('Help & Support', Icons.help_outline_rounded),
+      ('Terms & Conditions', Icons.description_outlined),
     ];
 
     return Scaffold(
@@ -69,8 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           children: [
                             _AccountAvatar(
-                              displayName: displayName,
                               photoUrl: user?.photoURL,
+                              imageBytes: _profilePhotoBytes,
+                              isUploading: _isUploadingPhoto,
+                              onTap: _pickProfilePhoto,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -190,6 +200,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'Help & Support':
         await _showHelp(context);
         return;
+      case 'Terms & Conditions':
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const TermsConditionsScreen(),
+          ),
+        );
+        return;
     }
   }
 
@@ -303,43 +320,146 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
+
+  Future<void> _pickProfilePhoto() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (image == null || !mounted) return;
+
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+      setState(() => _profilePhotoBytes = imageBytes);
+
+      final result = await CloudinaryService().uploadImage(image);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw StateError('Please sign in to update your photo.');
+      }
+      await user.updatePhotoURL(result.secureUrl);
+      await user.reload();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo updated.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to update photo: $error')));
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
 }
 
 class _AccountAvatar extends StatelessWidget {
-  const _AccountAvatar({required this.displayName, required this.photoUrl});
+  const _AccountAvatar({
+    required this.photoUrl,
+    required this.imageBytes,
+    required this.isUploading,
+    required this.onTap,
+  });
 
-  final String displayName;
   final String? photoUrl;
+  final Uint8List? imageBytes;
+  final bool isUploading;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final imageUrl = photoUrl?.trim();
-    if (imageUrl == null || imageUrl.isEmpty) return _fallbackAvatar();
+    final Widget avatar;
+    if (imageBytes != null) {
+      avatar = ClipOval(
+        child: Image.memory(
+          imageBytes!,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
+        ),
+      );
+    } else if (imageUrl != null && imageUrl.isNotEmpty) {
+      avatar = ClipOval(
+        child: Image.network(
+          imageUrl,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
+        ),
+      );
+    } else {
+      avatar = _fallbackAvatar();
+    }
 
-    return ClipOval(
-      child: Image.network(
-        imageUrl,
-        width: 56,
-        height: 56,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _fallbackAvatar(),
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: Stack(
+        children: [
+          Positioned.fill(child: avatar),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Tooltip(
+              message: 'Change profile photo',
+              child: Material(
+                color: AppColors.orange,
+                shape: const CircleBorder(
+                  side: BorderSide(color: Colors.white, width: 2),
+                ),
+                child: InkWell(
+                  onTap: isUploading ? null : onTap,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: Center(
+                      child: isUploading
+                          ? const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 13,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _fallbackAvatar() {
-    final trimmedName = displayName.trim();
-    final initial = trimmedName.isEmpty ? 'U' : trimmedName[0].toUpperCase();
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: AppColors.orange,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-        ),
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFE2BD),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.person_rounded,
+        color: AppColors.orange,
+        size: 32,
       ),
     );
   }

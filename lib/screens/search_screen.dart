@@ -31,12 +31,9 @@ class _SearchScreenState extends State<SearchScreen> {
     'Wintermelon Milk Tea',
   ];
 
-  static final _searchCategories = [
-    (menuCategories[0], 'Milk Tea'),
-    (menuCategories[1], 'Coffee'),
-    (menuCategories[2], 'Fruit Tea'),
-    (menuCategories[5], 'Add-ons'),
-  ];
+  static final _searchCategories = menuCategories
+      .map((category) => (category, category.name))
+      .toList();
 
   List<MenuProduct> get _results {
     final query = _searchController.text.trim().toLowerCase();
@@ -87,7 +84,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -96,7 +93,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ),
                   Container(
-                    height: 42,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -109,10 +106,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       decoration: InputDecoration(
                         hintText: 'Search drinks, categories...',
                         hintStyle: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: Color(0xFF888888),
                         ),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 22),
                         suffixIcon: _searchController.text.isEmpty
                             ? null
                             : IconButton(
@@ -121,7 +118,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   _searchController.clear();
                                   setState(() {});
                                 },
-                                icon: const Icon(Icons.close_rounded, size: 18),
+                                icon: const Icon(Icons.close_rounded, size: 20),
                               ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
@@ -140,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                   children: [
                     if (_searchController.text.isNotEmpty) ...[
                       _SectionHeading(
@@ -153,7 +150,10 @@ class _SearchScreenState extends State<SearchScreen> {
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
                           child: Center(
-                            child: Text('No matching drinks or categories'),
+                            child: Text(
+                              'No matching drinks or categories',
+                              style: TextStyle(fontSize: 15),
+                            ),
                           ),
                         )
                       else
@@ -186,7 +186,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: const Text(
                               'Clear All',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -202,7 +202,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             InputChip(
                               label: Text(
                                 term,
-                                style: const TextStyle(fontSize: 10),
+                                style: const TextStyle(fontSize: 13),
                               ),
                               onPressed: () => _applySearch(term),
                               onDeleted: () =>
@@ -244,7 +244,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     const SizedBox(height: 8),
                     SizedBox(
-                      height: 94,
+                      height: 116,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _searchCategories.length,
@@ -349,13 +349,13 @@ class _SectionHeading extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
         ),
         if (trailing != null)
           Text(
             trailing!,
-            style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
       ],
     );
@@ -376,15 +376,15 @@ class _SearchCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 72,
+      width: 88,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Column(
           children: [
             Container(
-              width: 62,
-              height: 62,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFE0BC),
                 borderRadius: BorderRadius.circular(10),
@@ -396,7 +396,7 @@ class _SearchCategoryTile extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -422,21 +422,21 @@ class _SearchProductRow extends StatelessWidget {
           child: CloudinaryImage(
             url: product.imageUrl,
             fallbackAsset: product.imageAsset,
-            width: 42,
-            height: 42,
+            width: 56,
+            height: 56,
           ),
         ),
         title: Text(
           product.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           'P${product.price} · ${product.description}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 10),
+          style: const TextStyle(fontSize: 12, height: 1.3),
         ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: onTap,
@@ -489,7 +489,7 @@ class _SearchBottomNavigationBar extends StatelessWidget {
                       Text(
                         _items[index].$2,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: index == selectedIndex
                               ? AppColors.orange

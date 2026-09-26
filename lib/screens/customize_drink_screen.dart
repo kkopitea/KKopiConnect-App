@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
 import '../widgets/cloudinary_image.dart';
+import '../widgets/curved_content_page.dart';
 import 'cart_screen.dart';
 
 class CustomizeDrinkScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   String sugar = '50%';
   String ice = '25%';
   final Set<String> addIns = {};
-  final Set<String> addOns = {'Coffee Jelly'};
+  final Set<String> addOns = {};
 
   static const _addInOptions = <String, int>{
     'Extra syrup': 5,
@@ -57,9 +58,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
       ..addAll(widget.draft.addIns);
     addOns
       ..clear()
-      ..addAll(
-        widget.draft.addOns.isEmpty ? {'Coffee Jelly'} : widget.draft.addOns,
-      );
+      ..addAll(widget.draft.addOns);
   }
 
   OrderDraft get _currentDraft => OrderDraft(
@@ -78,111 +77,100 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.draft.product;
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F4),
-      appBar: AppBar(
-        title: const Text('Customize your drink'),
-        centerTitle: true,
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded),
+    return CurvedContentPage(
+      title: 'Customize your drink',
+      actions: [
+        IconButton(
+          tooltip: 'Reset options',
+          onPressed: () => setState(() {
+            quantity = 1;
+            size = 'Regular';
+            sizePrice = product.price;
+            sugar = '50%';
+            ice = '25%';
+            addIns.clear();
+            addOns.clear();
+          }),
+          icon: const Icon(Icons.refresh_rounded),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Reset options',
-            onPressed: () => setState(() {
-              quantity = 1;
-              size = 'Regular';
-              sizePrice = product.price;
-              sugar = '50%';
-              ice = '25%';
-              addIns.clear();
-              addOns
-                ..clear()
-                ..add('Coffee Jelly');
-            }),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(14),
-                children: [
-                  _ProductSummary(
-                    name: product.name,
-                    size: size,
-                    price: sizePrice,
-                    image: product.imageAsset,
-                    imageUrl: product.imageUrl,
-                    isBestSeller: product.isBestSeller,
-                    quantity: quantity,
-                    onQuantity: (value) => setState(() => quantity = value),
+      ],
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(14),
+              children: [
+                _ProductSummary(
+                  name: product.name,
+                  size: size,
+                  price: sizePrice,
+                  image: product.imageAsset,
+                  imageUrl: product.imageUrl,
+                  isBestSeller: product.isBestSeller,
+                  quantity: quantity,
+                  onQuantity: (value) => setState(() => quantity = value),
+                ),
+                const SizedBox(height: 14),
+                _OptionSection(
+                  title: '1. Sugar',
+                  options: _sugarOptions,
+                  selected: sugar,
+                  onSelect: (value) => setState(() => sugar = value),
+                ),
+                const SizedBox(height: 12),
+                _OptionSection(
+                  title: '2. Ice level',
+                  options: _iceOptions,
+                  selected: ice,
+                  onSelect: (value) => setState(() => ice = value),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: _panelDecoration,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '3. Add ins / your liking',
+                        style: _sectionTitle,
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          for (final entry in _addInOptions.entries)
+                            FilterChip(
+                              label: Text('${entry.key} · P${entry.value}'),
+                              selected: addIns.contains(entry.key),
+                              onSelected: (selected) => setState(() {
+                                if (selected) {
+                                  addIns.add(entry.key);
+                                } else {
+                                  addIns.remove(entry.key);
+                                }
+                              }),
+                              selectedColor: AppColors.orangeTint,
+                              checkmarkColor: AppColors.orange,
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  _OptionSection(
-                    title: '1. Sugar',
-                    options: _sugarOptions,
-                    selected: sugar,
-                    onSelect: (value) => setState(() => sugar = value),
-                  ),
-                  const SizedBox(height: 12),
-                  _OptionSection(
-                    title: '2. Ice level',
-                    options: _iceOptions,
-                    selected: ice,
-                    onSelect: (value) => setState(() => ice = value),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: _panelDecoration,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '3. Add ins / your liking',
-                          style: _sectionTitle,
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            for (final entry in _addInOptions.entries)
-                              FilterChip(
-                                label: Text('${entry.key} · P${entry.value}'),
-                                selected: addIns.contains(entry.key),
-                                onSelected: (selected) => setState(() {
-                                  if (selected) {
-                                    addIns.add(entry.key);
-                                  } else {
-                                    addIns.remove(entry.key);
-                                  }
-                                }),
-                                selectedColor: AppColors.orangeTint,
-                                checkmarkColor: AppColors.orange,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: _panelDecoration,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('4. Add-ons', style: _sectionTitle),
-                        for (final entry in addOnPrices.entries)
-                          CheckboxListTile(
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: _panelDecoration,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('4. Add-ons', style: _sectionTitle),
+                      for (final entry in addOnPrices.entries)
+                        Material(
+                          color: Colors.transparent,
+                          child: CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                             activeColor: AppColors.orange,
@@ -199,63 +187,65 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                               }
                             }),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  const CircleAvatar(
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            color: Colors.white,
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: AppColors.orange,
+                  foregroundColor: Colors.white,
+                  child: Icon(Icons.local_cafe_rounded),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Total Price',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      Text(
+                        'P$total',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
                     backgroundColor: AppColors.orange,
                     foregroundColor: Colors.white,
-                    child: Icon(Icons.local_cafe_rounded),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Total Price',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        Text(
-                          'P$total',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.orange,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () {
-                      CartStore.add(_currentDraft);
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const CartScreen()),
-                      );
-                    },
-                    child: Text('Add to cart  P$total'),
-                  ),
-                ],
-              ),
+                  onPressed: () {
+                    CartStore.add(_currentDraft);
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const CartScreen(),
+                      ),
+                    );
+                  },
+                  child: Text('Add to cart  P$total'),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
