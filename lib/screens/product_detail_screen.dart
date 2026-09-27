@@ -21,19 +21,20 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
-  String _selectedSize = 'Medium';
+  String _selectedSize = 'Regular';
   int _selectedPrice = 0;
 
-  List<(String, int)> get _sizes => [
-    ('Regular', widget.product.price),
-    ('Medium', widget.product.price + 20),
-    ('Large', widget.product.price + 50),
-  ];
+  List<(String, int)> get _sizes => widget.product.sizes.isEmpty
+      ? [('Regular', widget.product.price)]
+      : widget.product.sizes
+          .map((size) => (size.$1, widget.product.price + size.$2))
+          .toList();
 
   @override
   void initState() {
     super.initState();
-    _selectedPrice = widget.product.price + 20;
+    _selectedSize = _sizes.first.$1;
+    _selectedPrice = _sizes.first.$2;
   }
 
   OrderDraft get _draft => OrderDraft(

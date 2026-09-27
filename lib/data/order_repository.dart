@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'placed_order.dart';
 
@@ -20,29 +21,40 @@ class FirestoreOrderRepository implements OrderRepository {
 
   final FirebaseFirestore _firestore;
 
-  CollectionReference<Map<String, dynamic>> _ordersFor(String userId) =>
-      _firestore.collection('orders').doc(userId).collection('orders');
+  CollectionReference<Map<String, dynamic>> get _orders =>
+      _firestore.collection('orders');
 
   @override
   Future<void> saveOrder(String userId, PlacedOrder order) async {
-    await _ordersFor(userId).doc(order.id).set(order.toMap());
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.uid != userId) {
+      throw StateError('Sign in before placing an order.');
+    }
+    await _orders.doc(order.id).set({
+      ...order.toMap(),
+      'userId': userId,
+      'customerName': user.displayName ?? 'Customer',
+      'customerEmail': user.email ?? '',
+    });
   }
 
   @override
   Stream<List<PlacedOrder>> watchOrders(String userId) {
-    return _ordersFor(userId)
-        .orderBy('createdAt', descending: true)
+    return _orders
+        .where('userId', isEqualTo: userId)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final orders = snapshot.docs
               .map(
                 (document) => PlacedOrder.fromMap({
                   ...document.data(),
                   'id': document.id,
                 }),
               )
-              .toList(growable: false),
-        );
+              .toList();
+          orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return List.unmodifiable(orders);
+        });
   }
 
   @override
@@ -51,6 +63,6 @@ class FirestoreOrderRepository implements OrderRepository {
     required String orderId,
     required String status,
   }) async {
-    await _ordersFor(userId).doc(orderId).update({'status': status});
+    await _orders.doc(orderId).update({'status': status});
   }
 }

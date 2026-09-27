@@ -22,11 +22,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _branch = 'Urdaneta City';
 
   static const _homeCategories = [
-    (Icons.local_drink_outlined, 'milk-tea', 'Milktea'),
+    (Icons.local_drink_outlined, 'milktea', 'Milktea'),
     (Icons.coffee_outlined, 'coffee', 'Coffee'),
     (Icons.fastfood_outlined, 'snacks', 'Snacks'),
     (Icons.soup_kitchen_outlined, 'frappe', 'Frappe'),
-    (Icons.emoji_food_beverage_outlined, 'fruit-tea', 'Fruit Tea'),
+    (Icons.emoji_food_beverage_outlined, 'fruit_tea', 'Fruit Tea'),
   ];
 
   @override

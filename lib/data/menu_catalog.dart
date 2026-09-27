@@ -25,6 +25,8 @@ class MenuProduct {
     this.isClassic = false,
     this.imageAsset = 'assets/images/welcome_drink.png',
     this.imageUrl,
+    this.sizes = const [],
+    this.sugarLevels = const [],
   });
 
   final String id;
@@ -38,11 +40,13 @@ class MenuProduct {
   final bool isClassic;
   final String imageAsset;
   final String? imageUrl;
+  final List<(String, int)> sizes;
+  final List<String> sugarLevels;
 }
 
 const menuCategories = <MenuCategory>[
   MenuCategory(
-    id: 'milk-tea',
+    id: 'milktea',
     name: 'Milktea',
     icon: Icons.local_drink_rounded,
   ),
@@ -50,13 +54,13 @@ const menuCategories = <MenuCategory>[
   MenuCategory(id: 'snacks', name: 'Snacks', icon: Icons.fastfood_rounded),
   MenuCategory(id: 'frappe', name: 'Frappe', icon: Icons.soup_kitchen_rounded),
   MenuCategory(
-    id: 'fruit-tea',
+    id: 'fruit_tea',
     name: 'Fruit Tea',
     icon: Icons.emoji_food_beverage_rounded,
   ),
 ];
 
-const menuProducts = <MenuProduct>[
+List<MenuProduct> menuProducts = <MenuProduct>[
   MenuProduct(
     id: 'iced-americano-caramel',
     name: 'Iced Americano Caramel',
@@ -72,8 +76,8 @@ const menuProducts = <MenuProduct>[
     name: 'Vanilla Americano Latte Tea',
     description: 'A refreshing blend of bold espresso, creamy milk, and sweet vanilla over chewy boba pearls.',
     price: 50,
-    categoryId: 'milk-tea',
-    categoryIds: ['milk-tea', 'coffee'],
+    categoryId: 'milktea',
+    categoryIds: ['milktea', 'coffee'],
     isBestSeller: true,
   ),
   MenuProduct(
@@ -90,8 +94,8 @@ const menuProducts = <MenuProduct>[
     name: 'White Chocolate Milk Tea',
     description: 'Classic milk tea served with chewy tapioca pearls.',
     price: 60,
-    categoryId: 'milk-tea',
-    categoryIds: ['milk-tea'],
+    categoryId: 'milktea',
+    categoryIds: ['milktea'],
     isBestSeller: true,
     isClassic: true,
   ),
@@ -108,8 +112,8 @@ const menuProducts = <MenuProduct>[
     name: 'Mango Fruit Tea',
     description: 'Bright fruit tea with a refreshing mango finish.',
     price: 65,
-    categoryId: 'fruit-tea',
-    categoryIds: ['fruit-tea'],
+    categoryId: 'fruit_tea',
+    categoryIds: ['fruit_tea'],
     isNew: true,
   ),
   MenuProduct(

@@ -52,6 +52,10 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
     size = widget.draft.size;
     sizePrice = widget.draft.unitPrice;
     sugar = widget.draft.sugar;
+    if (widget.draft.product.sugarLevels.isNotEmpty &&
+        !widget.draft.product.sugarLevels.contains(sugar)) {
+      sugar = widget.draft.product.sugarLevels.first;
+    }
     ice = widget.draft.ice;
     addIns
       ..clear()
@@ -84,9 +88,11 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
           tooltip: 'Reset options',
           onPressed: () => setState(() {
             quantity = 1;
-            size = 'Regular';
-            sizePrice = product.price;
-            sugar = '50%';
+            size = product.sizes.isEmpty ? 'Regular' : product.sizes.first.$1;
+            sizePrice = product.sizes.isEmpty
+                ? product.price
+                : product.price + product.sizes.first.$2;
+            sugar = product.sugarLevels.isEmpty ? '50%' : product.sugarLevels.first;
             ice = '25%';
             addIns.clear();
             addOns.clear();
@@ -113,7 +119,9 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                 const SizedBox(height: 14),
                 _OptionSection(
                   title: '1. Sugar',
-                  options: _sugarOptions,
+                  options: product.sugarLevels.isEmpty
+                      ? _sugarOptions
+                      : product.sugarLevels.map((level) => (level, level)).toList(),
                   selected: sugar,
                   onSelect: (value) => setState(() => sugar = value),
                 ),

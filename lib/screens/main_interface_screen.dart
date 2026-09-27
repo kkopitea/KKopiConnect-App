@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/menu_catalog.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'chatbot_screen.dart';
@@ -17,8 +21,62 @@ class MainInterfaceScreen extends StatefulWidget {
 
 class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   int _selectedIndex = 0;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _productsSubscription;
 
-  late final _pages = <Widget>[
+  @override
+  void initState() {
+    super.initState();
+    menuProducts = [];
+    _productsSubscription = FirebaseFirestore.instance
+        .collection('products')
+        .snapshots()
+        .listen((snapshot) {
+          final items = snapshot.docs.where((doc) {
+            final data = doc.data();
+            return data['isAvailable'] == true &&
+                data['name'] is String &&
+                data['basePrice'] is num;
+          }).map((doc) {
+            final data = doc.data();
+            final categoryId = data['categoryId'] as String? ?? '';
+            final rawSizes = data['sizes'];
+            final sizes = rawSizes is List
+                ? rawSizes.whereType<Map>().where((size) =>
+                    size['name'] is String &&
+                    (size['additionalPrice'] ?? size['additional']) is num)
+                    .map((size) => (
+                      size['name'] as String,
+                      ((size['additionalPrice'] ?? size['additional']) as num).toInt(),
+                    )).toList()
+                : <(String, int)>[];
+            final rawSugar = data['sugarLevels'];
+            return MenuProduct(
+              id: doc.id,
+              name: data['name'] as String,
+              description: data['description'] as String? ?? '',
+              price: (data['basePrice'] as num).toInt(),
+              categoryId: categoryId,
+              categoryIds: [categoryId],
+              imageUrl: data['imageUrl'] as String?,
+              sizes: sizes,
+              sugarLevels: rawSugar is List
+                  ? rawSugar.whereType<String>().toList()
+                  : [],
+            );
+          }).toList();
+          if (mounted) setState(() => menuProducts = items);
+        }, onError: (Object error) {
+          debugPrint('Unable to load menu products: $error');
+        });
+  }
+
+  @override
+  void dispose() {
+    _productsSubscription?.cancel();
+    super.dispose();
+  }
+
+  List<Widget> get _pages => <Widget>[
     HomeScreen(onSeeAllCategories: () => _selectTab(1)),
     CategoriesScreen(onNavigateTab: _selectTab),
     CartScreen(),

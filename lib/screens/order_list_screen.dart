@@ -29,6 +29,12 @@ class OrderListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Could not load orders. Check Firestore access.'),
+            );
+          }
+
           final orders = snapshot.data ?? const <PlacedOrder>[];
 
           if (user == null) {
