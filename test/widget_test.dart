@@ -17,6 +17,7 @@ import 'package:kkopiconnect_app/screens/order_type_screen.dart';
 import 'package:kkopiconnect_app/screens/product_detail_screen.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
+import 'package:kkopiconnect_app/services/chatbot_service.dart';
 import 'package:kkopiconnect_app/state/cart_store.dart';
 
 void main() {
@@ -46,13 +47,23 @@ void main() {
   });
 
   testWidgets('chat assistant answers menu price questions', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ChatbotScreen()));
+    final chatbotService = _FakeChatbotReplyService();
+    await tester.pumpWidget(
+      MaterialApp(home: ChatbotScreen(chatbotService: chatbotService)),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Mango Fruit Tea price');
     await tester.tap(find.byTooltip('Send message'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Mango Fruit Tea is P65'), findsOneWidget);
+    expect(find.text('Here is the current menu information.'), findsOneWidget);
+    expect(chatbotService.lastQuestion, 'Mango Fruit Tea price');
+    expect(
+      chatbotService.lastProducts.any(
+        (product) => product.name == 'Mango Fruit Tea',
+      ),
+      isTrue,
+    );
   });
 
   testWidgets('product actions stay pinned at the bottom on a small screen', (
@@ -156,4 +167,16 @@ void main() {
     expect(find.byType(BottomNavigationBar), findsNothing);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _FakeChatbotReplyService implements ChatbotReplyService {
+  String? lastQuestion;
+  List<MenuProduct> lastProducts = [];
+
+  @override
+  Future<String> replyTo(String question, List<MenuProduct> products) async {
+    lastQuestion = question;
+    lastProducts = products;
+    return 'Here is the current menu information.';
+  }
 }

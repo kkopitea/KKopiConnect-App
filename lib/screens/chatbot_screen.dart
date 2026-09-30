@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
+import '../services/chatbot_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key});
+  const ChatbotScreen({super.key, this.chatbotService});
+
+  final ChatbotReplyService? chatbotService;
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
@@ -13,6 +17,8 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  late final ChatbotReplyService _chatbotService;
+  bool _isSending = false;
   final List<_ChatMessage> _messages = [
     const _ChatMessage(
       text: 'Hi! I can help you explore our menu, check prices, find best sellers, and place an order.',
@@ -25,6 +31,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     'What fruit tea do you have?',
     'How do I place an order?',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _chatbotService = widget.chatbotService ?? FirebaseChatbotService();
+  }
 
   @override
   void dispose() {
@@ -61,8 +73,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
-              itemCount: _messages.length == 1 ? 1 : _messages.length,
+              itemCount: _messages.length + (_isSending ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == _messages.length) {
+                  return const _TypingIndicator();
+                }
                 if (index == 0 && _messages.length == 1) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +127,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       minLines: 1,
                       maxLines: 4,
                       textCapitalization: TextCapitalization.sentences,
-                      onSubmitted: _send,
+                      onSubmitted: _isSending ? null : _send,
                       decoration: InputDecoration(
                         hintText: 'Ask about the menu or your order',
                         filled: true,
@@ -131,7 +146,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   const SizedBox(width: 8),
                   IconButton.filled(
                     tooltip: 'Send message',
-                    onPressed: () => _send(_messageController.text),
+                    onPressed: _isSending
+                        ? null
+                        : () => _send(_messageController.text),
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.orange,
                       foregroundColor: Colors.white,
@@ -147,81 +164,56 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
-  void _send(String rawText) {
+  Future<void> _send(String rawText) async {
     final text = rawText.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isSending) return;
     _messageController.clear();
     setState(() {
-      _messages
-        ..add(_ChatMessage(text: text, fromUser: true))
-        ..add(_ChatMessage(text: _replyTo(text), fromUser: false));
+      _isSending = true;
+      _messages.add(_ChatMessage(text: text, fromUser: true));
     });
+    _scrollToLatestMessage();
+
+    String reply;
+    try {
+      reply = await _chatbotService.replyTo(text, menuProducts);
+    } catch (error) {
+      if (kDebugMode) debugPrint('Chatbot request failed: $error');
+      reply = 'I could not reach the assistant just now. Please try again.';
+    }
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+      _messages.add(_ChatMessage(text: reply, fromUser: false));
+    });
+    _scrollToLatestMessage();
+  }
+
+  void _scrollToLatestMessage() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+      );
     });
   }
+}
 
-  String _replyTo(String question) {
-    final normalized = question.toLowerCase();
-    final matchingProduct = menuProducts.where((product) {
-      final normalizedName = product.name.toLowerCase();
-      return normalized.contains(normalizedName) ||
-          normalizedName.contains(normalized);
-    });
-    if (matchingProduct.isNotEmpty) {
-      final product = matchingProduct.first;
-      return '${product.name} is P${product.price}. ${product.description}';
-    }
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
 
-    if (_hasAny(normalized, ['best seller', 'popular', 'favorite'])) {
-      final bestSellers = menuProducts
-          .where((product) => product.isBestSeller)
-          .map((product) => '${product.name} (P${product.price})')
-          .join(', ');
-      return 'Our best sellers are $bestSellers.';
-    }
-
-    final matchingCategory = menuCategories.where(
-      (category) => normalized.contains(category.name.toLowerCase()),
+  @override
+  Widget build(BuildContext context) {
+    return const Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 10),
+        child: CircularProgressIndicator.adaptive(),
+      ),
     );
-    if (matchingCategory.isNotEmpty) {
-      final category = matchingCategory.first;
-      final products = menuProducts
-          .where((product) => product.categoryIds.contains(category.id))
-          .map((product) => '${product.name} (P${product.price})')
-          .join(', ');
-      return products.isEmpty
-          ? 'There are no ${category.name} products listed right now.'
-          : '${category.name} options: $products.';
-    }
-
-    if (_hasAny(normalized, ['new', 'latest'])) {
-      final newProducts = menuProducts
-          .where((product) => product.isNew)
-          .map((product) => '${product.name} (P${product.price})')
-          .join(', ');
-      return 'New on the menu: $newProducts.';
-    }
-
-    if (_hasAny(normalized, ['order', 'buy', 'checkout', 'place'])) {
-      return 'Choose a product from the menu, customize it, add it to your cart, then tap Proceed to choose pickup and payment details.';
-    }
-
-    if (_hasAny(normalized, ['hello', 'hi', 'hey'])) {
-      return 'Hello! Ask me about a product, its price, a menu category, or how to order.';
-    }
-
-    return 'I can help with menu items, prices, categories, best sellers, and ordering. Try asking “What fruit tea do you have?”';
   }
-
-  bool _hasAny(String value, List<String> terms) =>
-      terms.any((term) => value.contains(term));
 }
 
 class _ChatMessage {

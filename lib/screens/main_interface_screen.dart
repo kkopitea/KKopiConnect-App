@@ -21,7 +21,8 @@ class MainInterfaceScreen extends StatefulWidget {
 
 class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   int _selectedIndex = 0;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _productsSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _productsSubscription;
 
   @override
   void initState() {
@@ -30,44 +31,64 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
     _productsSubscription = FirebaseFirestore.instance
         .collection('products')
         .snapshots()
-        .listen((snapshot) {
-          final items = snapshot.docs.where((doc) {
-            final data = doc.data();
-            return data['isAvailable'] == true &&
-                data['name'] is String &&
-                data['basePrice'] is num;
-          }).map((doc) {
-            final data = doc.data();
-            final categoryId = data['categoryId'] as String? ?? '';
-            final rawSizes = data['sizes'];
-            final sizes = rawSizes is List
-                ? rawSizes.whereType<Map>().where((size) =>
-                    size['name'] is String &&
-                    (size['additionalPrice'] ?? size['additional']) is num)
-                    .map((size) => (
-                      size['name'] as String,
-                      ((size['additionalPrice'] ?? size['additional']) as num).toInt(),
-                    )).toList()
-                : <(String, int)>[];
-            final rawSugar = data['sugarLevels'];
-            return MenuProduct(
-              id: doc.id,
-              name: data['name'] as String,
-              description: data['description'] as String? ?? '',
-              price: (data['basePrice'] as num).toInt(),
-              categoryId: categoryId,
-              categoryIds: [categoryId],
-              imageUrl: data['imageUrl'] as String?,
-              sizes: sizes,
-              sugarLevels: rawSugar is List
-                  ? rawSugar.whereType<String>().toList()
-                  : [],
-            );
-          }).toList();
-          if (mounted) setState(() => menuProducts = items);
-        }, onError: (Object error) {
-          debugPrint('Unable to load menu products: $error');
-        });
+        .listen(
+          (snapshot) {
+            final items = snapshot.docs
+                .where((doc) {
+                  final data = doc.data();
+                  return data['isAvailable'] == true &&
+                      data['name'] is String &&
+                      data['basePrice'] is num;
+                })
+                .map((doc) {
+                  final data = doc.data();
+                  final categoryId = data['categoryId'] as String? ?? '';
+                  final rawSizes = data['sizes'];
+                  final sizes = rawSizes is List
+                      ? rawSizes
+                            .whereType<Map>()
+                            .where(
+                              (size) =>
+                                  size['name'] is String &&
+                                  (size['additionalPrice'] ??
+                                          size['additional'])
+                                      is num,
+                            )
+                            .map(
+                              (size) => (
+                                size['name'] as String,
+                                ((size['additionalPrice'] ?? size['additional'])
+                                        as num)
+                                    .toInt(),
+                              ),
+                            )
+                            .toList()
+                      : <(String, int)>[];
+                  final rawSugar = data['sugarLevels'];
+                  return MenuProduct(
+                    id: doc.id,
+                    name: data['name'] as String,
+                    description: data['description'] as String? ?? '',
+                    price: (data['basePrice'] as num).toInt(),
+                    categoryId: categoryId,
+                    categoryIds: [categoryId],
+                    isBestSeller: data['isBestSeller'] == true,
+                    isNew: data['isNew'] == true,
+                    isClassic: data['isClassic'] == true,
+                    imageUrl: data['imageUrl'] as String?,
+                    sizes: sizes,
+                    sugarLevels: rawSugar is List
+                        ? rawSugar.whereType<String>().toList()
+                        : [],
+                  );
+                })
+                .toList();
+            if (mounted) setState(() => menuProducts = items);
+          },
+          onError: (Object error) {
+            debugPrint('Unable to load menu products: $error');
+          },
+        );
   }
 
   @override
