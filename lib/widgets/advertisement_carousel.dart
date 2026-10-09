@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
@@ -18,44 +20,12 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
   final _pageController = PageController();
   late final _advertisementStream = _watchAdvertisements();
   int _activePage = 0;
-
-  static const _fallbackAds = [
-    Advertisement(
-      id: 'fallback-promo',
-      title: 'Buy 1, Get 1 Free!',
-      eyebrow: 'FEATURED PROMO',
-      description: 'Your everyday coffee and milk tea made with love.',
-      buttonLabel: 'Order now',
-      imageUrl: '',
-      isActive: true,
-      sortOrder: 0,
-      productId: 'iced-americano-caramel',
-    ),
-    Advertisement(
-      id: 'fallback-new-product',
-      title: 'New Mango Fruit Tea',
-      eyebrow: 'JUST ADDED',
-      description: 'Bright fruit tea with a refreshing mango finish.',
-      buttonLabel: 'Try it',
-      imageUrl: '',
-      isActive: true,
-      sortOrder: 1,
-      productId: 'mango-fruit-tea',
-    ),
-    Advertisement(
-      id: 'fallback-menu',
-      title: 'Find your next favorite',
-      eyebrow: 'MENU ANNOUNCEMENT',
-      description: 'Explore Milktea, Coffee, Snacks, Frappe and Fruit Tea.',
-      buttonLabel: 'Browse menu',
-      imageUrl: '',
-      isActive: true,
-      sortOrder: 2,
-    ),
-  ];
+  Timer? _autoAdvanceTimer;
+  String? _advertisementSignature;
 
   @override
   void dispose() {
+    _autoAdvanceTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -63,9 +33,39 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
   Stream<List<Advertisement>> _watchAdvertisements() {
     try {
       return AdvertisementRepository().watchAll();
-    } catch (_) {
-      return Stream.value(const <Advertisement>[]);
+    } catch (error, stackTrace) {
+      debugPrint('Unable to watch advertisements: $error');
+      return Stream<List<Advertisement>>.error(
+        error,
+        stackTrace,
+      ).asBroadcastStream();
     }
+  }
+
+  void _syncAutoAdvance(List<Advertisement> advertisements) {
+    final signature = advertisements.map((ad) => ad.id).join('|');
+    if (signature == _advertisementSignature) return;
+
+    final hasExistingAdvertisements = _advertisementSignature != null;
+    _advertisementSignature = signature;
+    _autoAdvanceTimer?.cancel();
+    if (hasExistingAdvertisements) {
+      _activePage = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+      });
+    }
+    if (advertisements.length < 2) return;
+
+    _autoAdvanceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   @override
@@ -76,15 +76,8 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
     return StreamBuilder<List<Advertisement>>(
       stream: _advertisementStream,
       builder: (context, snapshot) {
-        final allAdvertisements = snapshot.data;
-        final advertisements =
-            allAdvertisements == null || allAdvertisements.isEmpty
-            ? _fallbackAds
-            : allAdvertisements
-                  .where((advertisement) => advertisement.isActive)
-                  .toList(growable: false);
-
-        if (advertisements.isEmpty) {
+        if (snapshot.hasError) {
+          debugPrint('Promotion carousel failed to load: ${snapshot.error}');
           return Container(
             height: bannerHeight,
             alignment: Alignment.center,
@@ -93,7 +86,7 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Text(
-              'No active promotions right now',
+              'Promotions are temporarily unavailable',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -101,10 +94,16 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
             ),
           );
         }
+        final advertisements = (snapshot.data ?? const <Advertisement>[])
+            .where((advertisement) => advertisement.isActive)
+            .toList(growable: false);
+        _syncAutoAdvance(advertisements);
 
-        final selectedPage = _activePage < advertisements.length
-            ? _activePage
-            : 0;
+        if (advertisements.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final selectedPage = _activePage % advertisements.length;
 
         return Container(
           height: bannerHeight,
@@ -126,10 +125,11 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
                 child: PageView.builder(
                   key: ValueKey(advertisements.map((ad) => ad.id).join('|')),
                   controller: _pageController,
-                  itemCount: advertisements.length,
+                  itemCount: 1000000,
                   onPageChanged: (index) => setState(() => _activePage = index),
                   itemBuilder: (context, index) {
-                    final advertisement = advertisements[index];
+                    final advertisement =
+                        advertisements[index % advertisements.length];
                     final imageUrl = advertisement.imageUrl.trim();
                     return Row(
                       children: [

@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/placed_order.dart';
-import '../widgets/cloudinary_image.dart';
 import 'order_list_screen.dart';
 
 class OrderConfirmationScreen extends StatelessWidget {
-  const OrderConfirmationScreen({super.key, required this.order});
+  const OrderConfirmationScreen({
+    super.key,
+    required this.order,
+    this.onNavigateTab,
+  });
 
   final PlacedOrder order;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
-    final firstProduct = order.items.isEmpty ? null : order.items.first.product;
     final orderLabel = order.items.length == 1
         ? order.items.first.product.name
         : '${order.items.first.product.name} + ${order.items.length - 1} more';
@@ -75,20 +78,15 @@ class OrderConfirmationScreen extends StatelessWidget {
                               size: 13,
                             ),
                           ),
-                          Center(
-                            child: firstProduct == null
-                                ? const Icon(
-                                    Icons.local_cafe_rounded,
-                                    color: AppColors.orange,
-                                    size: 120,
-                                  )
-                                : CloudinaryImage(
-                                    url: firstProduct.imageUrl,
-                                    fallbackAsset: firstProduct.imageAsset,
-                                    width: 205,
-                                    height: 230,
-                                    fit: BoxFit.contain,
-                                  ),
+                          const Center(
+                            child: Image(
+                              image: AssetImage(
+                                'assets/images/kkopitea_drink.png',
+                              ),
+                              width: 205,
+                              height: 230,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ],
                       ),
@@ -153,12 +151,19 @@ class OrderConfirmationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const OrderListScreen(),
-                    ),
-                    (route) => route.isFirst,
-                  ),
+                  onPressed: () {
+                    if (onNavigateTab != null) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      onNavigateTab!(3);
+                    } else {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const OrderListScreen(),
+                        ),
+                        (route) => route.isFirst,
+                      );
+                    }
+                  },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.orange,
                     foregroundColor: Colors.white,

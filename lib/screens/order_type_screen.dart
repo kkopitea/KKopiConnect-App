@@ -1,19 +1,25 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/order_draft.dart';
+import '../data/payment_method.dart';
+import '../data/payment_method_repository.dart';
 import '../data/order_repository.dart';
 import '../state/cart_store.dart';
 import '../state/orders_store.dart';
 import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 import 'order_confirmation_screen.dart';
 
 class OrderTypeScreen extends StatefulWidget {
-  const OrderTypeScreen({super.key, required this.drafts});
+  const OrderTypeScreen({super.key, required this.drafts, this.onNavigateTab});
 
   final List<OrderDraft> drafts;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<OrderTypeScreen> createState() => _OrderTypeScreenState();
@@ -21,17 +27,49 @@ class OrderTypeScreen extends StatefulWidget {
 
 class _OrderTypeScreenState extends State<OrderTypeScreen> {
   bool _pickup = true;
+  bool _isPlacingOrder = false;
   String _paymentMethod = 'Pay At The Counter';
+  bool _paymentMethodsLoaded = false;
+  String? _paymentMethodsError;
+  List<PaymentMethod> _paymentMethods = defaultPaymentMethods;
+  late final StreamSubscription<List<PaymentMethod>>
+  _paymentMethodsSubscription;
   late final TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
     _noteController = TextEditingController();
+    _paymentMethodsSubscription = PaymentMethodRepository()
+        .watchActive()
+        .listen(
+          (methods) {
+            if (!mounted) return;
+            setState(() {
+              _paymentMethods = methods;
+              _paymentMethodsLoaded = true;
+              _paymentMethodsError = null;
+              if (!methods.any((method) => method.name == _paymentMethod) &&
+                  methods.isNotEmpty) {
+                _paymentMethod = methods.first.name;
+              }
+            });
+          },
+          onError: (Object error) {
+            debugPrint('Unable to load payment methods: $error');
+            if (mounted) {
+              setState(() {
+                _paymentMethodsLoaded = true;
+                _paymentMethodsError = 'Payment methods could not be loaded.';
+              });
+            }
+          },
+        );
   }
 
   @override
   void dispose() {
+    _paymentMethodsSubscription.cancel();
     _noteController.dispose();
     super.dispose();
   }
@@ -42,6 +80,9 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
     final total = drafts.fold<int>(0, (sum, draft) => sum + draft.total);
     return CurvedContentPage(
       title: 'Order type & payment method',
+      bottomNavigationBar: widget.onNavigateTab == null
+          ? null
+          : MainBottomNavigationBar(selectedIndex: 2, onTap: _navigateToTab),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
@@ -65,7 +106,7 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
               Expanded(
                 child: _ReceiveOption(
                   icon: Icons.delivery_dining_rounded,
-                  title: 'Place Order',
+                  title: 'Pick up',
                   subtitle: 'Ready for pickup',
                   selected: _pickup,
                   onTap: () => setState(() => _pickup = true),
@@ -87,31 +128,56 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: RadioGroup<String>(
-                groupValue: _paymentMethod,
-                onChanged: (value) {
-                  if (value != null) setState(() => _paymentMethod = value);
-                },
-                child: const Column(
-                  children: [
-                    RadioListTile<String>(
-                      value: 'Pay At The Counter',
-                      title: Text(
-                        'Pay At The Counter',
-                        style: TextStyle(fontSize: 13),
+              child: Column(
+                children: [
+                  if (_paymentMethodsError case final error?)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        error,
+                        style: const TextStyle(color: Colors.red),
                       ),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.orange,
+                    )
+                  else if (!_paymentMethodsLoaded)
+                    const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: CircularProgressIndicator(),
+                    )
+                  else if (_paymentMethods.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text('No payment methods are available.'),
+                    )
+                  else
+                    RadioGroup<String>(
+                      groupValue: _paymentMethod,
+                      onChanged: (value) {
+                        if (value != null) setState(() => _paymentMethod = value);
+                      },
+                      child: Column(
+                        children: [
+                          for (var index = 0;
+                              index < _paymentMethods.length;
+                              index++) ...[
+                            if (index > 0) const Divider(height: 1),
+                            RadioListTile<String>(
+                              value: _paymentMethods[index].name,
+                              title: Text(
+                                _paymentMethods[index].name,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              subtitle:
+                                  _paymentMethods[index].instructions.isEmpty
+                                  ? null
+                                  : Text(_paymentMethods[index].instructions),
+                              contentPadding: EdgeInsets.zero,
+                              activeColor: AppColors.orange,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    Divider(height: 1),
-                    RadioListTile<String>(
-                      value: 'Gcash',
-                      title: Text('Gcash', style: TextStyle(fontSize: 13)),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.orange,
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -125,7 +191,7 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
             controller: _noteController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'e.g. Less ice, extra creamy...',
+              hintText: 'e.g. Extra creamy...',
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -182,54 +248,117 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
           ),
           const SizedBox(height: 18),
           FilledButton(
-            onPressed: () async {
-              final user = FirebaseAuth.instance.currentUser;
-              if (user == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please sign in before placing an order.'),
-                  ),
-                );
-                return;
-              }
+            onPressed:
+                _isPlacingOrder ||
+                    drafts.isEmpty ||
+                    _paymentMethodsError != null ||
+                    !_paymentMethodsLoaded ||
+                    _paymentMethods.isEmpty
+                ? null
+                : () async {
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Your session expired. Please sign in again.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
 
-              try {
-                final order = OrdersStore.createOrder(
-                  items: drafts,
-                  fulfillment: _pickup ? 'Pickup' : 'Dine In',
-                  paymentMethod: _paymentMethod,
-                  instructions: _noteController.text.trim(),
-                );
+                    setState(() => _isPlacingOrder = true);
+                    String? pendingOrderId;
+                    try {
+                      final order = OrdersStore.createOrder(
+                        items: drafts,
+                        fulfillment: _pickup ? 'Pickup' : 'Dine In',
+                        paymentMethod: _paymentMethod,
+                        instructions: _noteController.text.trim(),
+                      );
+                      pendingOrderId = order.id;
 
-                await FirestoreOrderRepository().saveOrder(user.uid, order);
-                CartStore.clear();
+                      await FirestoreOrderRepository().saveOrder(
+                        user.uid,
+                        order,
+                      );
+                      CartStore.clear();
 
-                if (!context.mounted) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => OrderConfirmationScreen(order: order),
-                  ),
-                );
-              } catch (error) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Could not save your order: $error')),
-                );
-              }
-            },
+                      if (!context.mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => OrderConfirmationScreen(
+                            order: order,
+                            onNavigateTab: widget.onNavigateTab,
+                          ),
+                        ),
+                      );
+                    } on FirebaseException catch (error, stackTrace) {
+                      debugPrint(
+                        'Unable to place order (${error.code}): $error\n$stackTrace',
+                      );
+                      if (pendingOrderId != null) {
+                        OrdersStore.removeOrder(pendingOrderId);
+                      }
+                      if (!context.mounted) return;
+                      final message = switch (error.code) {
+                        'permission-denied' =>
+                          'Order was not saved. Check Firestore order permissions and App Check setup.',
+                        'unauthenticated' =>
+                          'Your session expired. Please sign in again.',
+                        'unavailable' || 'deadline-exceeded' =>
+                          'Could not reach the order service. Check your connection and try again.',
+                        _ =>
+                          'Could not save your order (${error.code}). Please try again.',
+                      };
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(message)));
+                    } catch (error, stackTrace) {
+                      debugPrint('Unable to place order: $error\n$stackTrace');
+                      if (pendingOrderId != null) {
+                        OrdersStore.removeOrder(pendingOrderId);
+                      }
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Could not place the order. Please try again.',
+                          ),
+                        ),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _isPlacingOrder = false);
+                    }
+                  },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.orange,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(54),
             ),
-            child: const Text(
-              'Place Order',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
+            child: _isPlacingOrder
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Place Order',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  void _navigateToTab(int index) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    widget.onNavigateTab?.call(index);
   }
 }
 
@@ -241,7 +370,7 @@ class _OrderLineSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final customizations = [
-      '${draft.size} · ${draft.sugar} sugar · ${draft.ice} ice',
+      '${draft.size} · ${draft.sugar} sugar',
       ...draft.addIns,
       ...draft.addOns,
     ];

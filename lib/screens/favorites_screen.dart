@@ -5,17 +5,32 @@ import '../data/menu_catalog.dart';
 import '../state/favorites_store.dart';
 import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 import 'product_detail_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
-  const FavoritesScreen({super.key, required this.onBrowseMenu});
+  const FavoritesScreen({
+    super.key,
+    required this.onBrowseMenu,
+    this.onNavigateTab,
+  });
 
   final VoidCallback onBrowseMenu;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
     return CurvedContentPage(
       title: 'Favorites',
+      bottomNavigationBar: onNavigateTab == null
+          ? null
+          : MainBottomNavigationBar(
+              selectedIndex: 4,
+              onTap: (index) {
+                Navigator.of(context).pop();
+                onNavigateTab!(index);
+              },
+            ),
       body: ValueListenableBuilder<Set<String>>(
         valueListenable: FavoritesStore.productIds,
         builder: (context, favoriteIds, _) {
@@ -113,7 +128,10 @@ class FavoritesScreen extends StatelessWidget {
                   ),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => ProductDetailScreen(product: product),
+                      builder: (_) => ProductDetailScreen(
+                        product: product,
+                        onNavigateTab: onNavigateTab,
+                      ),
                     ),
                   ),
                 ),

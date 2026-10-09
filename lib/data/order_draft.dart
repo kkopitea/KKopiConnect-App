@@ -10,6 +10,8 @@ class OrderDraft {
     this.ice = '50%',
     this.addIns = const {},
     this.addOns = const {},
+    this.addInUnitPrices = const {},
+    this.addOnUnitPrices = const {},
   });
 
   final MenuProduct product;
@@ -20,14 +22,24 @@ class OrderDraft {
   final String ice;
   final Set<String> addIns;
   final Set<String> addOns;
+  final Map<String, int> addInUnitPrices;
+  final Map<String, int> addOnUnitPrices;
 
   int get unitPrice => sizePrice ?? product.price;
 
   int get addOnTotal =>
-      addOns.fold<int>(0, (total, addOn) => total + (addOnPrices[addOn] ?? 0));
+      addOns.fold<int>(
+        0,
+        (total, addOn) =>
+            total + (addOnUnitPrices[addOn] ?? addOnPrices[addOn] ?? 0),
+      );
 
   int get addInTotal =>
-      addIns.fold<int>(0, (total, addIn) => total + (addInPrices[addIn] ?? 0));
+      addIns.fold<int>(
+        0,
+        (total, addIn) =>
+            total + (addInUnitPrices[addIn] ?? addInPrices[addIn] ?? 0),
+      );
 
   int get total => (unitPrice + addInTotal + addOnTotal) * quantity;
 
@@ -45,6 +57,8 @@ class OrderDraft {
     'ice': ice,
     'addIns': addIns.toList(),
     'addOns': addOns.toList(),
+    'addInUnitPrices': addInUnitPrices,
+    'addOnUnitPrices': addOnUnitPrices,
     'total': total,
   };
 
@@ -77,6 +91,8 @@ class OrderDraft {
       ice: map['ice'] as String? ?? '50%',
       addIns: Set<String>.from(map['addIns'] as List? ?? const []),
       addOns: Set<String>.from(map['addOns'] as List? ?? const []),
+      addInUnitPrices: _readPrices(map['addInUnitPrices']),
+      addOnUnitPrices: _readPrices(map['addOnUnitPrices']),
     );
   }
 
@@ -88,6 +104,8 @@ class OrderDraft {
     String? ice,
     Set<String>? addIns,
     Set<String>? addOns,
+    Map<String, int>? addInUnitPrices,
+    Map<String, int>? addOnUnitPrices,
   }) {
     return OrderDraft(
       product: product,
@@ -98,7 +116,19 @@ class OrderDraft {
       ice: ice ?? this.ice,
       addIns: addIns ?? this.addIns,
       addOns: addOns ?? this.addOns,
+      addInUnitPrices: addInUnitPrices ?? this.addInUnitPrices,
+      addOnUnitPrices: addOnUnitPrices ?? this.addOnUnitPrices,
     );
+  }
+
+  static Map<String, int> _readPrices(Object? rawPrices) {
+    if (rawPrices is! Map) return const {};
+    return rawPrices.map<String, int>((key, value) {
+      return MapEntry(
+        key.toString(),
+        value is num ? value.toInt() : 0,
+      );
+    });
   }
 }
 

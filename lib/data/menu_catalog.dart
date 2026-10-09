@@ -5,12 +5,42 @@ class MenuCategory {
     required this.id,
     required this.name,
     required this.icon,
+    this.sortOrder = 0,
   });
 
   final String id;
   final String name;
   final IconData icon;
+  final int sortOrder;
+
+  IconData get displayIcon => switch (id) {
+    'milktea' => Icons.local_drink_outlined,
+    'coffee' => Icons.coffee_outlined,
+    'snacks' => Icons.fastfood_outlined,
+    'frappe' => Icons.soup_kitchen_outlined,
+    'fruit_tea' => Icons.emoji_food_beverage_outlined,
+    _ => icon,
+  };
+
+  factory MenuCategory.fromFirestore(String id, Map<String, dynamic> data) =>
+      MenuCategory(
+        id: id,
+        name: data['name'] as String? ?? '',
+        icon:
+            _categoryIcons[data['iconKey'] as String?] ??
+            Icons.category_rounded,
+        sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
+      );
 }
+
+const _categoryIcons = <String, IconData>{
+  'milktea': Icons.local_drink_rounded,
+  'coffee': Icons.coffee_rounded,
+  'snacks': Icons.fastfood_rounded,
+  'frappe': Icons.soup_kitchen_rounded,
+  'fruitTea': Icons.emoji_food_beverage_rounded,
+  'default': Icons.category_rounded,
+};
 
 class MenuProduct {
   const MenuProduct({
@@ -42,9 +72,80 @@ class MenuProduct {
   final String? imageUrl;
   final List<(String, int)> sizes;
   final List<String> sugarLevels;
+
+  static MenuProduct? fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) {
+    final name = data['name'];
+    final rawPrice = data['price'] ?? data['basePrice'];
+    final available = data['available'] ?? data['isAvailable'];
+    if (name is! String || rawPrice is! num || available != true) return null;
+
+    final rawCategory = data['category'] ?? data['categoryId'];
+    final rawCategories = data['categories'];
+    final categories = rawCategories is List
+        ? rawCategories.whereType<String>().toList()
+        : rawCategory is String
+        ? [rawCategory]
+        : <String>[];
+    final categoryIds = categories
+        .map(_categoryIdForValue)
+        .where((categoryId) => categoryId.isNotEmpty)
+        .toSet()
+        .toList();
+    final categoryId = categoryIds.firstOrNull ?? '';
+    final rawSizes = data['sizes'];
+    final sizes = rawSizes is List
+        ? rawSizes
+              .whereType<Map>()
+              .where(
+                (size) =>
+                    size['name'] is String &&
+                    (size['additionalPrice'] ?? size['additional']) is num,
+              )
+              .map(
+                (size) => (
+                  size['name'] as String,
+                  ((size['additionalPrice'] ?? size['additional']) as num)
+                      .toInt(),
+                ),
+              )
+              .toList()
+        : <(String, int)>[];
+    final rawSugarLevels = data['sugarLevels'];
+
+    return MenuProduct(
+      id: id,
+      name: name,
+      description: data['description'] is String
+          ? data['description'] as String
+          : '',
+      price: rawPrice.toInt(),
+      categoryId: categoryId,
+      categoryIds: categoryIds,
+      isBestSeller: data['isBestSeller'] == true,
+      isNew: data['isNew'] == true,
+      isClassic: data['isClassic'] == true,
+      imageUrl: data['imageUrl'] is String ? data['imageUrl'] as String : null,
+      sizes: sizes,
+      sugarLevels: rawSugarLevels is List
+          ? rawSugarLevels.whereType<String>().toList()
+          : [],
+    );
+  }
 }
 
-const menuCategories = <MenuCategory>[
+String _categoryIdForValue(String value) {
+  final category = menuCategories.where(
+    (item) =>
+        item.id.toLowerCase() == value.toLowerCase() ||
+        item.name.toLowerCase() == value.toLowerCase(),
+  );
+  return category.isEmpty ? value.trim() : category.first.id;
+}
+
+const defaultMenuCategories = <MenuCategory>[
   MenuCategory(
     id: 'milktea',
     name: 'Milktea',
@@ -59,6 +160,17 @@ const menuCategories = <MenuCategory>[
     icon: Icons.emoji_food_beverage_rounded,
   ),
 ];
+
+List<MenuCategory> menuCategories = List.unmodifiable(defaultMenuCategories);
+final ValueNotifier<List<MenuCategory>> menuCategoriesNotifier =
+    ValueNotifier(menuCategories);
+
+void updateMenuCategories(List<MenuCategory> categories) {
+  menuCategories = List.unmodifiable(
+    categories.isEmpty ? defaultMenuCategories : categories,
+  );
+  menuCategoriesNotifier.value = menuCategories;
+}
 
 List<MenuProduct> menuProducts = <MenuProduct>[
   MenuProduct(

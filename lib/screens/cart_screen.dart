@@ -9,7 +9,9 @@ import 'categories_screen.dart';
 import 'order_type_screen.dart';
 
 class CartScreen extends StatelessWidget {
-  const CartScreen({super.key});
+  const CartScreen({super.key, this.onNavigateTab});
+
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +48,19 @@ class CartScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     FilledButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const CategoriesScreen(),
-                        ),
-                      ),
+                      onPressed: () {
+                        if (onNavigateTab != null) {
+                          onNavigateTab!(1);
+                        } else if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const CategoriesScreen(),
+                            ),
+                          );
+                        }
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.orange,
                         foregroundColor: Colors.white,
@@ -127,7 +137,10 @@ class CartScreen extends StatelessWidget {
                         child: FilledButton(
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
-                              builder: (_) => OrderTypeScreen(drafts: items),
+                              builder: (_) => OrderTypeScreen(
+                                drafts: items,
+                                onNavigateTab: onNavigateTab,
+                              ),
                             ),
                           ),
                           style: FilledButton.styleFrom(
@@ -166,7 +179,7 @@ class _CartItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final details = [
-      '${draft.size} · ${draft.sugar} sugar · ${draft.ice} ice',
+      '${draft.size} · ${draft.sugar} sugar',
       ...draft.addIns,
       ...draft.addOns,
     ];

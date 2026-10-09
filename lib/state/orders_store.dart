@@ -39,4 +39,8 @@ class OrdersStore {
     orders.value = List.unmodifiable([order, ...orders.value]);
     return order;
   }
+
+  static void removeOrder(String orderId) => orders.value = List.unmodifiable(
+    orders.value.where((order) => order.id != orderId),
+  );
 }

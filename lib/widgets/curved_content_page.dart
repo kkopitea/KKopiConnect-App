@@ -8,17 +8,20 @@ class CurvedContentPage extends StatelessWidget {
     required this.title,
     required this.body,
     this.actions = const [],
+    this.bottomNavigationBar,
   });
 
   final String title;
   final Widget body;
   final List<Widget> actions;
+  final Widget? bottomNavigationBar;
 
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
     return Scaffold(
       backgroundColor: AppColors.orange,
+      bottomNavigationBar: bottomNavigationBar,
       body: SafeArea(
         child: Stack(
           children: [

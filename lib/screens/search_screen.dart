@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
+import '../data/search_analytics_repository.dart';
 import '../widgets/cloudinary_image.dart';
 import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
@@ -16,24 +20,21 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  static const _recentSearchesPreferenceKey = 'recentSearches';
   final _searchController = TextEditingController();
-  final List<String> _recentSearches = [
-    'Brown Sugar Milk Tea',
-    'Matcha Latte',
-    'Taro Milk Tea',
-    'Coffee',
-  ];
+  final List<String> _recentSearches = [];
+  late final Stream<List<String>> _popularSearches = _watchPopularSearches();
 
-  static const _popularSearches = [
-    'Brown Sugar Milk Tea',
-    'Okinawa Milk Tea',
-    'Taro Milk Tea',
-    'Wintermelon Milk Tea',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    menuCategoriesNotifier.addListener(_categoriesChanged);
+    unawaited(_loadRecentSearches());
+  }
 
-  static final _searchCategories = menuCategories
-      .map((category) => (category, category.name))
-      .toList();
+  void _categoriesChanged() {
+    if (mounted) setState(() {});
+  }
 
   List<MenuProduct> get _results {
     final query = _searchController.text.trim().toLowerCase();
@@ -51,8 +52,18 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    menuCategoriesNotifier.removeListener(_categoriesChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  Stream<List<String>> _watchPopularSearches() {
+    try {
+      return SearchAnalyticsRepository().watchPopularSearches();
+    } catch (error, stackTrace) {
+      debugPrint('Unable to load popular searches: $error');
+      return Stream<List<String>>.error(error, stackTrace).asBroadcastStream();
+    }
   }
 
   @override
@@ -174,7 +185,10 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => setState(_recentSearches.clear),
+                            onPressed: () {
+                              setState(_recentSearches.clear);
+                              unawaited(_saveRecentSearches());
+                            },
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.orange,
                               padding: const EdgeInsets.symmetric(
@@ -205,8 +219,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                 style: const TextStyle(fontSize: 13),
                               ),
                               onPressed: () => _applySearch(term),
-                              onDeleted: () =>
-                                  setState(() => _recentSearches.remove(term)),
+                              onDeleted: () {
+                                setState(() => _recentSearches.remove(term));
+                                unawaited(_saveRecentSearches());
+                              },
                               deleteIconColor: AppColors.orange,
                               backgroundColor: AppColors.orangeTint,
                               side: BorderSide.none,
@@ -215,6 +231,18 @@ class _SearchScreenState extends State<SearchScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
+                    ] else ...[
+                      const _SectionHeading(
+                        icon: Icons.history_rounded,
+                        title: 'Recent Searches',
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Text(
+                          'Your recent searches will appear here.',
+                          style: TextStyle(color: AppColors.textMuted),
+                        ),
+                      ),
                     ],
                     Row(
                       children: [
@@ -247,17 +275,19 @@ class _SearchScreenState extends State<SearchScreen> {
                       height: 116,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: _searchCategories.length,
+                        itemCount: menuCategories.length,
                         separatorBuilder: (_, _) => const SizedBox(width: 9),
                         itemBuilder: (context, index) {
-                          final item = _searchCategories[index];
+                          final category = menuCategories[index];
                           return _SearchCategoryTile(
-                            category: item.$1,
-                            label: item.$2,
+                            category: category,
+                            label: category.name,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    CategoryProductsScreen(category: item.$1),
+                                builder: (_) => CategoryProductsScreen(
+                                  category: category,
+                                  onNavigateTab: widget.onNavigateTab,
+                                ),
                               ),
                             ),
                           );
@@ -270,26 +300,59 @@ class _SearchScreenState extends State<SearchScreen> {
                       title: 'Popular Searches',
                     ),
                     const SizedBox(height: 5),
-                    for (final term in _popularSearches)
-                      Material(
-                        color: Colors.transparent,
-                        child: ListTile(
-                          dense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                          ),
-                          leading: const Icon(Icons.search_rounded, size: 19),
-                          title: Text(
-                            term,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
+                    StreamBuilder<List<String>>(
+                      stream: _popularSearches,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              'Popular searches are temporarily unavailable.',
+                              style: TextStyle(color: AppColors.textMuted),
                             ),
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => _applySearch(term),
-                        ),
-                      ),
+                          );
+                        }
+                        final terms = snapshot.data ?? const <String>[];
+                        if (terms.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              'Search for a drink to help build the popular list.',
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (final term in terms)
+                              Material(
+                                color: Colors.transparent,
+                                child: ListTile(
+                                  dense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  leading: const Icon(
+                                    Icons.search_rounded,
+                                    size: 19,
+                                  ),
+                                  title: Text(
+                                    term,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                  ),
+                                  onTap: () => _applySearch(term),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -312,6 +375,65 @@ class _SearchScreenState extends State<SearchScreen> {
       _recentSearches.insert(0, term);
       if (_recentSearches.length > 8) _recentSearches.removeLast();
     });
+    unawaited(_saveRecentSearches());
+    unawaited(_recordPopularSearch(term));
+  }
+
+  Future<void> _loadRecentSearches() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final storedSearches =
+          preferences.getStringList(_recentSearchesPreferenceKey) ?? [];
+      if (!mounted) return;
+      setState(() {
+        final recentlyAdded = List<String>.of(_recentSearches);
+        _recentSearches
+          ..clear()
+          ..addAll(storedSearches.take(8));
+        for (final term in recentlyAdded.reversed) {
+          _recentSearches
+            ..remove(term)
+            ..insert(0, term);
+        }
+        if (_recentSearches.length > 8) {
+          _recentSearches.removeRange(8, _recentSearches.length);
+        }
+      });
+    } catch (error) {
+      debugPrint('Unable to load local recent searches: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not load recent searches.')),
+      );
+    }
+  }
+
+  Future<void> _saveRecentSearches() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setStringList(
+        _recentSearchesPreferenceKey,
+        _recentSearches,
+      );
+    } catch (error) {
+      debugPrint('Unable to save local recent searches: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save recent searches.')),
+      );
+    }
+  }
+
+  Future<void> _recordPopularSearch(String term) async {
+    try {
+      await SearchAnalyticsRepository().recordSearch(term);
+    } catch (error) {
+      debugPrint('Unable to record popular search: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update popular searches.')),
+      );
+    }
   }
 
   void _applySearch(String term) {
@@ -323,7 +445,10 @@ class _SearchScreenState extends State<SearchScreen> {
     _submitSearch(_searchController.text);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ProductDetailScreen(product: product),
+        builder: (_) => ProductDetailScreen(
+          product: product,
+          onNavigateTab: widget.onNavigateTab,
+        ),
       ),
     );
   }
@@ -376,20 +501,24 @@ class _SearchCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 88,
+      width: 72,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(36),
         child: Column(
           children: [
             Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFE0BC),
-                borderRadius: BorderRadius.circular(10),
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFE2BD),
+                shape: BoxShape.circle,
               ),
-              child: Icon(category.icon, size: 36, color: Colors.black),
+              child: Icon(
+                category.displayIcon,
+                size: 27,
+                color: Colors.black87,
+              ),
             ),
             const SizedBox(height: 4),
             Text(

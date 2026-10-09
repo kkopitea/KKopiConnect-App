@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 
 class TermsConditionsScreen extends StatelessWidget {
-  const TermsConditionsScreen({super.key});
+  const TermsConditionsScreen({
+    super.key,
+    this.onNavigateTab,
+    this.selectedTab = 4,
+  });
+
+  final ValueChanged<int>? onNavigateTab;
+  final int selectedTab;
 
   static const _sections = [
     (
@@ -51,42 +60,61 @@ class TermsConditionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CurvedContentPage(
-      title: 'Terms & Conditions',
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
-        children: [
-          const Text(
-            'KKOPI.TEA App Terms',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Please read these terms before using the app or placing an order.',
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 15,
-              height: 1.45,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: CurvedContentPage(
+        title: 'Terms & Conditions',
+        bottomNavigationBar: onNavigateTab == null
+            ? null
+            : MainBottomNavigationBar(
+                selectedIndex: selectedTab,
+                onTap: (index) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  onNavigateTab!(index);
+                },
+              ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
+          children: [
+            const Text(
+              'KKOPI.TEA App Terms',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             ),
-          ),
-          const SizedBox(height: 20),
-          for (final section in _sections) ...[
-            Text(
-              section.$1,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              section.$2,
-              style: const TextStyle(
-                color: Color(0xFF424242),
+            const SizedBox(height: 8),
+            const Text(
+              'Please read these terms before using the app or placing an order.',
+              style: TextStyle(
+                color: AppColors.textMuted,
                 fontSize: 15,
-                height: 1.5,
+                height: 1.45,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
+            for (final section in _sections) ...[
+              Text(
+                section.$1,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                section.$2,
+                style: const TextStyle(
+                  color: Color(0xFF424242),
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

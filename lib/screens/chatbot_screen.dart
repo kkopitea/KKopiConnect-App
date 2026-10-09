@@ -176,10 +176,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     String reply;
     try {
-      reply = await _chatbotService.replyTo(text, menuProducts);
+      reply = await _chatbotService
+          .replyTo(text, menuProducts)
+          .timeout(const Duration(seconds: 45));
     } catch (error) {
       if (kDebugMode) debugPrint('Chatbot request failed: $error');
-      reply = 'I could not reach the assistant just now. Please try again.';
+      reply =
+          'I could not reach the assistant just now. Please check your connection and try again in a moment.';
     }
     if (!mounted) return;
     setState(() {

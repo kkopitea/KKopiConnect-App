@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/drink_extra.dart';
+import '../data/drink_extra_repository.dart';
+import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
 import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 import 'cart_screen.dart';
 
 class CustomizeDrinkScreen extends StatefulWidget {
-  const CustomizeDrinkScreen({super.key, required this.draft});
+  const CustomizeDrinkScreen({
+    super.key,
+    required this.draft,
+    this.onNavigateTab,
+  });
 
   final OrderDraft draft;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<CustomizeDrinkScreen> createState() => _CustomizeDrinkScreenState();
@@ -21,15 +30,12 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   late String size;
   late int sizePrice;
   String sugar = '50%';
-  String ice = '25%';
   final Set<String> addIns = {};
   final Set<String> addOns = {};
-
-  static const _addInOptions = <String, int>{
-    'Extra syrup': 5,
-    'Pearls': 20,
-    'Cream cap': 20,
-  };
+  final Map<String, int> _addInUnitPrices = {};
+  final Map<String, int> _addOnUnitPrices = {};
+  late final Stream<List<DrinkExtra>> _addInsStream;
+  late final Stream<List<DrinkExtra>> _addOnsStream;
   static const _sugarOptions = [
     ('0%', 'No sugar'),
     ('25%', 'Less'),
@@ -37,63 +43,101 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
     ('75%', 'Slightly sweet'),
     ('100%', 'Sweet'),
   ];
-  static const _iceOptions = [
-    ('0%', 'No ice'),
-    ('25%', 'Less ice'),
-    ('50%', 'Normal'),
-    ('75%', 'Extra'),
-    ('100%', 'Full ice'),
-  ];
-
   @override
   void initState() {
     super.initState();
+    try {
+      final repository = DrinkExtraRepository();
+      _addInsStream = repository.watchAddIns();
+      _addOnsStream = repository.watchAddOns();
+    } catch (error, stackTrace) {
+      debugPrint('Unable to connect to drink options: $error');
+      _addInsStream = Stream<List<DrinkExtra>>.error(error, stackTrace);
+      _addOnsStream = Stream<List<DrinkExtra>>.error(error, stackTrace);
+    }
     quantity = widget.draft.quantity;
     size = widget.draft.size;
     sizePrice = widget.draft.unitPrice;
     sugar = widget.draft.sugar;
-    if (widget.draft.product.sugarLevels.isNotEmpty &&
-        !widget.draft.product.sugarLevels.contains(sugar)) {
-      sugar = widget.draft.product.sugarLevels.first;
-    }
-    ice = widget.draft.ice;
     addIns
       ..clear()
       ..addAll(widget.draft.addIns);
     addOns
       ..clear()
       ..addAll(widget.draft.addOns);
+    _addInUnitPrices.addAll(widget.draft.addInUnitPrices);
+    _addOnUnitPrices.addAll(widget.draft.addOnUnitPrices);
   }
 
-  OrderDraft get _currentDraft => OrderDraft(
-    product: widget.draft.product,
-    quantity: quantity,
-    size: size,
-    sizePrice: sizePrice,
-    sugar: sugar,
-    ice: ice,
-    addIns: Set.unmodifiable(addIns),
-    addOns: Set.unmodifiable(addOns),
-  );
-
-  int get total => _currentDraft.total;
+  OrderDraft _draftForOptions(
+    List<DrinkExtra> addInOptions,
+    List<DrinkExtra> addOnOptions,
+  ) {
+    final addInPrices = Map<String, int>.of(_addInUnitPrices);
+    final addOnPrices = Map<String, int>.of(_addOnUnitPrices);
+    for (final option in addInOptions) {
+      if (addIns.contains(option.name)) addInPrices[option.name] = option.price;
+    }
+    for (final option in addOnOptions) {
+      if (addOns.contains(option.name)) addOnPrices[option.name] = option.price;
+    }
+    return OrderDraft(
+      product: widget.draft.product,
+      quantity: quantity,
+      size: size,
+      sizePrice: sizePrice,
+      sugar: sugar,
+      addIns: Set.unmodifiable(addIns),
+      addOns: Set.unmodifiable(addOns),
+      addInUnitPrices: Map.unmodifiable(addInPrices),
+      addOnUnitPrices: Map.unmodifiable(addOnPrices),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final product = widget.draft.product;
+    return StreamBuilder<List<DrinkExtra>>(
+      stream: _addInsStream,
+      builder: (context, addInSnapshot) => StreamBuilder<List<DrinkExtra>>(
+        stream: _addOnsStream,
+        builder: (context, addOnSnapshot) =>
+            _buildPage(product, addInSnapshot, addOnSnapshot),
+      ),
+    );
+  }
+
+  Widget _buildPage(
+    MenuProduct product,
+    AsyncSnapshot<List<DrinkExtra>> addInSnapshot,
+    AsyncSnapshot<List<DrinkExtra>> addOnSnapshot,
+  ) {
+    final addInOptions = addInSnapshot.data ?? const <DrinkExtra>[];
+    final addOnOptions = addOnSnapshot.data ?? const <DrinkExtra>[];
+    final currentDraft = _draftForOptions(addInOptions, addOnOptions);
+    final total = currentDraft.total;
     return CurvedContentPage(
       title: 'Customize your drink',
+      bottomNavigationBar: widget.onNavigateTab == null
+          ? null
+          : MainBottomNavigationBar(
+              selectedIndex: 2,
+              onTap: (index) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                widget.onNavigateTab!(index);
+              },
+            ),
       actions: [
         IconButton(
           tooltip: 'Reset options',
+          color: Colors.white,
           onPressed: () => setState(() {
             quantity = 1;
             size = product.sizes.isEmpty ? 'Regular' : product.sizes.first.$1;
             sizePrice = product.sizes.isEmpty
                 ? product.price
                 : product.price + product.sizes.first.$2;
-            sugar = product.sugarLevels.isEmpty ? '50%' : product.sugarLevels.first;
-            ice = '25%';
+            sugar = '50%';
             addIns.clear();
             addOns.clear();
           }),
@@ -119,18 +163,9 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                 const SizedBox(height: 14),
                 _OptionSection(
                   title: '1. Sugar',
-                  options: product.sugarLevels.isEmpty
-                      ? _sugarOptions
-                      : product.sugarLevels.map((level) => (level, level)).toList(),
+                  options: _sugarOptionsFor(product),
                   selected: sugar,
                   onSelect: (value) => setState(() => sugar = value),
-                ),
-                const SizedBox(height: 12),
-                _OptionSection(
-                  title: '2. Ice level',
-                  options: _iceOptions,
-                  selected: ice,
-                  onSelect: (value) => setState(() => ice = value),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -140,30 +175,43 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        '3. Add ins / your liking',
+                        '2. Add ins / your liking',
                         style: _sectionTitle,
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          for (final entry in _addInOptions.entries)
-                            FilterChip(
-                              label: Text('${entry.key} · P${entry.value}'),
-                              selected: addIns.contains(entry.key),
-                              onSelected: (selected) => setState(() {
-                                if (selected) {
-                                  addIns.add(entry.key);
-                                } else {
-                                  addIns.remove(entry.key);
-                                }
-                              }),
-                              selectedColor: AppColors.orangeTint,
-                              checkmarkColor: AppColors.orange,
-                            ),
-                        ],
-                      ),
+                      if (addInSnapshot.hasError)
+                        const _OptionsError(label: 'add-ins')
+                      else if (addInSnapshot.connectionState ==
+                              ConnectionState.waiting &&
+                          !addInSnapshot.hasData)
+                        const _OptionsLoading()
+                      else if (addInOptions.isEmpty)
+                        const _OptionsEmpty()
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            for (final option in addInOptions)
+                              FilterChip(
+                                label: Text(
+                                  '${option.name} · P${option.price}',
+                                ),
+                                selected: addIns.contains(option.name),
+                                onSelected: (selected) => setState(() {
+                                  if (selected) {
+                                    addIns.add(option.name);
+                                    _addInUnitPrices[option.name] =
+                                        option.price;
+                                  } else {
+                                    addIns.remove(option.name);
+                                  }
+                                }),
+                                selectedColor: AppColors.orangeTint,
+                                checkmarkColor: AppColors.orange,
+                              ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -174,28 +222,38 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('4. Add-ons', style: _sectionTitle),
-                      for (final entry in addOnPrices.entries)
-                        Material(
-                          color: Colors.transparent,
-                          child: CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                            activeColor: AppColors.orange,
-                            title: Text(
-                              '${entry.key} (P${entry.value})',
-                              style: const TextStyle(fontSize: 12),
+                      const Text('3. Add-ons', style: _sectionTitle),
+                      if (addOnSnapshot.hasError)
+                        const _OptionsError(label: 'add-ons')
+                      else if (addOnSnapshot.connectionState ==
+                              ConnectionState.waiting &&
+                          !addOnSnapshot.hasData)
+                        const _OptionsLoading()
+                      else if (addOnOptions.isEmpty)
+                        const _OptionsEmpty()
+                      else
+                        for (final option in addOnOptions)
+                          Material(
+                            color: Colors.transparent,
+                            child: CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              activeColor: AppColors.orange,
+                              title: Text(
+                                '${option.name} (P${option.price})',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              value: addOns.contains(option.name),
+                              onChanged: (selected) => setState(() {
+                                if (selected == true) {
+                                  addOns.add(option.name);
+                                  _addOnUnitPrices[option.name] = option.price;
+                                } else {
+                                  addOns.remove(option.name);
+                                }
+                              }),
                             ),
-                            value: addOns.contains(entry.key),
-                            onChanged: (selected) => setState(() {
-                              if (selected == true) {
-                                addOns.add(entry.key);
-                              } else {
-                                addOns.remove(entry.key);
-                              }
-                            }),
                           ),
-                        ),
                     ],
                   ),
                 ),
@@ -241,12 +299,17 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
-                    CartStore.add(_currentDraft);
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const CartScreen(),
-                      ),
-                    );
+                    CartStore.add(currentDraft);
+                    if (widget.onNavigateTab != null) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      widget.onNavigateTab!(2);
+                    } else {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const CartScreen(),
+                        ),
+                      );
+                    }
                   },
                   child: Text('Add to cart  P$total'),
                 ),
@@ -257,6 +320,51 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
       ),
     );
   }
+
+  List<(String, String)> _sugarOptionsFor(MenuProduct product) {
+    if (product.sugarLevels.isEmpty) return _sugarOptions;
+    final options = product.sugarLevels.map((level) => (level, level)).toList();
+    if (!product.sugarLevels.contains('50%')) options.insert(0, ('50%', '50%'));
+    return options;
+  }
+}
+
+class _OptionsLoading extends StatelessWidget {
+  const _OptionsLoading();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Text('Loading options...', style: TextStyle(fontSize: 12)),
+  );
+}
+
+class _OptionsEmpty extends StatelessWidget {
+  const _OptionsEmpty();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Text(
+      'No options available right now.',
+      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+    ),
+  );
+}
+
+class _OptionsError extends StatelessWidget {
+  const _OptionsError({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Text(
+      'Unable to load $label. Check your connection and Firestore access.',
+      style: const TextStyle(fontSize: 12, color: Colors.red),
+    ),
+  );
 }
 
 const _panelDecoration = BoxDecoration(

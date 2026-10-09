@@ -362,7 +362,7 @@ class OrderDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${item.size} · ${item.sugar} sugar · ${item.ice} ice',
+                          '${item.size} · ${item.sugar} sugar',
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textMuted,

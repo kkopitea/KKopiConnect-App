@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../app_colors.dart';
+import '../data/payment_method_repository.dart';
 import '../services/cloudinary_service.dart';
 import 'categories_screen.dart';
 import 'favorites_screen.dart';
@@ -67,51 +69,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE8E8E8)),
-                        ),
-                        child: Row(
-                          children: [
-                            _AccountAvatar(
-                              photoUrl: user?.photoURL,
-                              imageBytes: _profilePhotoBytes,
-                              isUploading: _isUploadingPhoto,
-                              onTap: _pickProfilePhoto,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    email,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: user == null
+                            ? null
+                            : FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .snapshots(),
+                        builder: (context, snapshot) {
+                          final profile = snapshot.data?.data();
+                          final name = profile?['name'] is String
+                              ? (profile!['name'] as String).trim()
+                              : '';
+                          final photoUrl = profile?['photoUrl'] as String? ??
+                              user?.photoURL;
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFE8E8E8),
                               ),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              children: [
+                                _AccountAvatar(
+                                  photoUrl: photoUrl,
+                                  imageBytes: _profilePhotoBytes,
+                                  isUploading: _isUploadingPhoto,
+                                  onTap: _pickProfilePhoto,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name.isEmpty ? displayName : name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF666666),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 18),
                       for (final item in items) ...[
@@ -182,9 +203,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _handleMenuTap(BuildContext context, String title) async {
     switch (title) {
       case 'My Orders':
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
-        );
+        if (widget.onNavigateTab != null) {
+          widget.onNavigateTab!(3);
+        } else {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+          );
+        }
         return;
       case 'Payment Methods':
         await _selectPaymentMethod(context);
@@ -194,7 +219,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       case 'Notifications':
         await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) => NotificationsScreen(
+              onNavigateTab: widget.onNavigateTab,
+              selectedTab: 4,
+            ),
+          ),
         );
         return;
       case 'Help & Support':
@@ -203,7 +233,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'Terms & Conditions':
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const TermsConditionsScreen(),
+            builder: (_) => TermsConditionsScreen(
+              onNavigateTab: widget.onNavigateTab,
+              selectedTab: 4,
+            ),
           ),
         );
         return;
@@ -217,25 +250,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Payment Methods'),
-          content: RadioGroup<String>(
-            groupValue: selectedMethod,
-            onChanged: (value) {
-              if (value != null) {
-                setDialogState(() => selectedMethod = value);
-              }
+          content: StreamBuilder(
+            stream: PaymentMethodRepository().watchActive(),
+            builder: (context, snapshot) {
+              final List<String> options = snapshot.hasData
+                  ? snapshot.data!.map((method) => method.name).toList()
+                  : const ['Pay At The Counter', 'Gcash'];
+              return RadioGroup<String>(
+                groupValue: selectedMethod,
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => selectedMethod = value);
+                  }
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (snapshot.hasError)
+                      const Text('Payment methods could not be loaded.')
+                    else if (snapshot.hasData && options.isEmpty)
+                      const Text('No payment methods are currently available.')
+                    else
+                      for (final option in options)
+                        RadioListTile<String>(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(option),
+                          value: option,
+                          activeColor: AppColors.orange,
+                        ),
+                  ],
+                ),
+              );
             },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final option in ['Pay At The Counter', 'Gcash'])
-                  RadioListTile<String>(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(option),
-                    value: option,
-                    activeColor: AppColors.orange,
-                  ),
-              ],
-            ),
           ),
           actions: [
             TextButton(
@@ -257,6 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => FavoritesScreen(
+          onNavigateTab: widget.onNavigateTab,
           onBrowseMenu: () {
             Navigator.of(context).pop();
             if (widget.onNavigateTab case final navigate?) {
@@ -342,6 +389,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         throw StateError('Please sign in to update your photo.');
       }
       await user.updatePhotoURL(result.secureUrl);
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'photoUrl': result.secureUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       await user.reload();
       if (!mounted) return;
       setState(() {});

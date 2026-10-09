@@ -10,8 +10,8 @@ import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
 import 'search_screen.dart';
 import '../widgets/advertisement_carousel.dart';
-import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/menu_product_card.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key, this.onNavigateTab});
@@ -27,6 +27,27 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   String _activeFilter = 'All';
   String? _activeCategoryId;
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    menuCategoriesNotifier.addListener(_categoriesChanged);
+  }
+
+  @override
+  void dispose() {
+    menuCategoriesNotifier.removeListener(_categoriesChanged);
+    super.dispose();
+  }
+
+  void _categoriesChanged() {
+    if (!mounted) return;
+    if (_activeCategoryId != null &&
+        !menuCategories.any((category) => category.id == _activeCategoryId)) {
+      _activeCategoryId = null;
+    }
+    setState(() {});
+  }
 
   List<MenuProduct> get _visibleProducts => menuProducts.where((product) {
     final matchesFilter = switch (_activeFilter) {
@@ -57,9 +78,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ),
         IconButton(
           tooltip: 'Open cart',
-          onPressed: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const CartScreen())),
+          onPressed: () {
+            if (widget.onNavigateTab != null) {
+              widget.onNavigateTab!(2);
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const CartScreen()),
+              );
+            }
+          },
           color: Colors.white,
           icon: const Icon(Icons.shopping_cart_checkout_rounded),
         ),
@@ -112,13 +139,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     child: Center(child: Text('No products found')),
                   )
                 else
-                  for (var index = 0; index < products.length; index++)
-                    _ProductRow(
-                      product: products[index],
-                      background:
-                          _thumbnailColors[index % _thumbnailColors.length],
-                      onOpen: () => _openProduct(products[index]),
-                      onAdd: () => _addProduct(products[index]),
+                  for (final product in products)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: MenuProductCard(
+                        product: product,
+                        onTap: () => _openProduct(product),
+                        onAdd: () => _addProduct(product),
+                      ),
                     ),
               ],
             ),
@@ -127,13 +155,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       ),
     );
   }
-
-  static const _thumbnailColors = [
-    Color(0xFFFFE1A8),
-    Color(0xFFFFC277),
-    Color(0xFFCF741E),
-    Color(0xFFFFE8CB),
-  ];
 
   void _openSearch() {
     Navigator.of(context).push(
@@ -164,14 +185,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
             for (final category in menuCategories)
               ListTile(
-                leading: Icon(category.icon, color: AppColors.orange),
+                leading: Icon(category.displayIcon, color: AppColors.orange),
                 title: Text(category.name),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) =>
-                          CategoryProductsScreen(category: category),
+                      builder: (_) => CategoryProductsScreen(
+                        category: category,
+                        onNavigateTab: widget.onNavigateTab,
+                      ),
                     ),
                   );
                 },
@@ -185,15 +208,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   void _openProduct(MenuProduct product) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ProductDetailScreen(product: product),
+        builder: (_) => ProductDetailScreen(
+          product: product,
+          onNavigateTab: widget.onNavigateTab,
+        ),
       ),
     );
   }
 
   void _addProduct(MenuProduct product) {
     CartStore.add(OrderDraft(product: product));
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
   }
 
   void _selectAdvertisement(Advertisement advertisement) {
@@ -236,7 +263,7 @@ class _FilterTab extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: selected ? AppColors.orange : AppColors.textMuted,
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                   ),
                 ),
@@ -288,7 +315,7 @@ class _CategoryCarousel extends StatelessWidget {
                 for (final category in menuCategories)
                   _CategoryTab(
                     label: category.name,
-                    icon: category.icon,
+                    icon: category.displayIcon,
                     selected: selectedCategoryId == category.id,
                     onTap: () => onSelected(category.id),
                   ),
@@ -329,13 +356,13 @@ class _CategoryTab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 8),
-              Icon(icon, size: 19, color: color),
+              Icon(icon, size: 16, color: color),
               const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
@@ -352,135 +379,6 @@ class _CategoryTab extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ProductRow extends StatelessWidget {
-  const _ProductRow({
-    required this.product,
-    required this.background,
-    required this.onOpen,
-    required this.onAdd,
-  });
-
-  final MenuProduct product;
-  final Color background;
-  final VoidCallback onOpen;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: CloudinaryImage(
-                    url: product.imageUrl,
-                    fallbackAsset: product.imageAsset,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          if (product.isBestSeller) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.orange,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Best Seller',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        product.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'P${product.price}',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Material(
-                  color: Colors.black,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    onTap: onAdd,
-                    customBorder: const CircleBorder(),
-                    child: const SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: Icon(
-                        Icons.add_rounded,
-                        color: Colors.white,
-                        size: 25,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const Divider(height: 1, color: Color(0xFFE7E7E7)),
-      ],
     );
   }
 }

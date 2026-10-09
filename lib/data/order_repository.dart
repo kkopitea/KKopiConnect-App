@@ -32,9 +32,14 @@ class FirestoreOrderRepository implements OrderRepository {
     }
     await _orders.doc(order.id).set({
       ...order.toMap(),
+      'orderId': order.id,
+      'orderType': order.fulfillment,
       'userId': userId,
+      'customerId': userId,
       'customerName': user.displayName ?? 'Customer',
       'customerEmail': user.email ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -63,6 +68,13 @@ class FirestoreOrderRepository implements OrderRepository {
     required String orderId,
     required String status,
   }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.uid != userId) {
+      throw StateError('You can only update your own order.');
+    }
+    if (status != 'Cancelled') {
+      throw ArgumentError.value(status, 'status', 'Only cancellation is allowed.');
+    }
     await _orders.doc(orderId).update({'status': status});
   }
 }

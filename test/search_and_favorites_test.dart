@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
 import 'package:kkopiconnect_app/screens/categories_screen.dart';
@@ -11,6 +12,7 @@ import 'package:kkopiconnect_app/state/orders_store.dart';
 
 void main() {
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     FavoritesStore.productIds.value = <String>{};
     OrdersStore.orders.value = [];
   });
@@ -42,6 +44,28 @@ void main() {
     expect(find.text('Search results'), findsOneWidget);
     expect(find.text('Iced Americano Caramel'), findsOneWidget);
     expect(find.text('Caramel Caffuccino'), findsOneWidget);
+  });
+
+  testWidgets('recent searches are saved on the device and reloaded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: SearchScreen(onNavigateTab: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Mango Tea');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getStringList('recentSearches'), ['Mango Tea']);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(home: SearchScreen(onNavigateTab: (_) {})),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Mango Tea'), findsOneWidget);
   });
 
   testWidgets('top category carousel filters products by category', (
@@ -97,33 +121,19 @@ void main() {
     await tester.tap(find.text('Promotion'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Special Promo'), findsOneWidget);
-    expect(find.text('Loyalty Reward'), findsOneWidget);
+    expect(find.text('Special Promo'), findsNothing);
+    expect(find.text('Loyalty Reward'), findsNothing);
     expect(find.text('Order Pending'), findsNothing);
   });
 
-  testWidgets('notifications can be marked read and dismissed', (tester) async {
+  testWidgets('notifications no longer show hard-coded demo content', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: NotificationsScreen()));
     await tester.pumpAndSettle();
 
-    final specialPromo = find.text('Special Promo');
-    expect(
-      tester.widget<Text>(specialPromo).style?.fontWeight,
-      FontWeight.w800,
-    );
-
-    await tester.tap(find.byTooltip('Mark all as read'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<Text>(specialPromo).style?.fontWeight,
-      FontWeight.w600,
-    );
-
-    await tester.drag(
-      find.ancestor(of: specialPromo, matching: find.byType(Dismissible)),
-      const Offset(-500, 0),
-    );
-    await tester.pumpAndSettle();
-    expect(specialPromo, findsNothing);
+    expect(find.text('Special Promo'), findsNothing);
+    expect(find.text('New Menu'), findsNothing);
+    expect(find.text('Loyalty Reward'), findsNothing);
   });
 }

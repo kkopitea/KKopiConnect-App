@@ -11,9 +11,14 @@ import 'customize_drink_screen.dart';
 import 'cart_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
-  const ProductDetailScreen({super.key, required this.product});
+  const ProductDetailScreen({
+    super.key,
+    required this.product,
+    this.onNavigateTab,
+  });
 
   final MenuProduct product;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -346,8 +351,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: OutlinedButton(
                                     onPressed: () => Navigator.of(context).push(
                                       MaterialPageRoute<void>(
-                                        builder: (_) =>
-                                            CustomizeDrinkScreen(draft: _draft),
+                                        builder: (_) => CustomizeDrinkScreen(
+                                          draft: _draft,
+                                          onNavigateTab: widget.onNavigateTab,
+                                        ),
                                       ),
                                     ),
                                     style: OutlinedButton.styleFrom(

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'order_draft.dart';
 
 class PlacedOrder {
@@ -19,7 +21,7 @@ class PlacedOrder {
   final String status;
   final DateTime createdAt;
 
-  int get total => items.fold<int>(0, (sum, item) => sum + item.total);
+  int get total => items.fold<int>(0, (amount, item) => amount + item.total);
 
   String get formattedId => '#$id';
 
@@ -58,9 +60,17 @@ class PlacedOrder {
       paymentMethod: map['paymentMethod'] as String? ?? 'Pay At The Counter',
       instructions: map['instructions'] as String? ?? '',
       status: map['status'] as String? ?? 'Pending',
-      createdAt:
-          DateTime.tryParse(map['createdAt'] as String? ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      createdAt: _parseCreatedAt(map['createdAt']),
     );
+  }
+
+  static DateTime _parseCreatedAt(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value) ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   }
 }

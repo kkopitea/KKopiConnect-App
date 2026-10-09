@@ -78,6 +78,8 @@ class _RegisterScreenState extends State<RegisterScreen>
           'isActive': true,
           'name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       }
       if (!mounted) return;
@@ -94,8 +96,9 @@ class _RegisterScreenState extends State<RegisterScreen>
         'weak-password' => 'Please choose a stronger password.',
         _ => 'Unable to create your account.',
       };
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
