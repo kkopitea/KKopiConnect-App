@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
+import 'package:kkopiconnect_app/data/search_analytics_repository.dart';
 import 'package:kkopiconnect_app/screens/categories_screen.dart';
 import 'package:kkopiconnect_app/screens/favorites_screen.dart';
+import 'package:kkopiconnect_app/screens/home_screen.dart';
 import 'package:kkopiconnect_app/screens/notifications_screen.dart';
 import 'package:kkopiconnect_app/screens/search_screen.dart';
 import 'package:kkopiconnect_app/state/favorites_store.dart';
@@ -19,13 +21,27 @@ void main() {
 
   test('menu categories match the requested lineup', () {
     expect(menuCategories.map((category) => category.name).toList(), [
-      'Milktea',
+      'Milk Tea',
       'Coffee',
       'Snacks',
       'Frappe',
       'Fruit Tea',
     ]);
     expect(menuProducts.first.categoryIds, contains('coffee'));
+  });
+
+  test('popular search terms resolve only to complete product names', () {
+    final names = SearchAnalyticsRepository.matchingProductNames(
+      searchTerms: [
+        'iced americano caramel',
+        'coffee',
+        'Mango Fruit',
+        'MANGO FRUIT TEA',
+      ],
+      productNames: menuProducts.map((product) => product.name),
+    );
+
+    expect(names, ['Iced Americano Caramel', 'Mango Fruit Tea']);
   });
 
   testWidgets('search filters menu products as the query changes', (
@@ -77,6 +93,38 @@ void main() {
     await tester.tap(find.text('Coffee').first);
     await tester.pumpAndSettle();
 
+    expect(find.text('Iced Americano Caramel'), findsOneWidget);
+    expect(find.text('Oreo Smoothie'), findsNothing);
+  });
+
+  testWidgets(
+    'dashboard category buttons navigate with that category selected',
+    (tester) async {
+      String? selectedCategoryId;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeScreen(
+            onSeeAllCategories: () {},
+            onSelectCategory: (categoryId) => selectedCategoryId = categoryId,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Coffee').first);
+
+      expect(selectedCategoryId, 'coffee');
+    },
+  );
+
+  testWidgets('categories screen opens with the requested category selected', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: CategoriesScreen(selectedCategoryId: 'coffee')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coffee'), findsWidgets);
     expect(find.text('Iced Americano Caramel'), findsOneWidget);
     expect(find.text('Oreo Smoothie'), findsNothing);
   });

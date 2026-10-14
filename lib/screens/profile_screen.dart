@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../app_colors.dart';
 import '../data/payment_method_repository.dart';
 import '../services/cloudinary_service.dart';
+import '../widgets/curved_content_page.dart';
 import 'categories_screen.dart';
 import 'favorites_screen.dart';
 import 'login_screen_redesign.dart';
@@ -35,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final displayName = _displayNameFor(user);
     final email = user?.email ?? 'No email address';
     final items = [
-      ('My Orders', Icons.receipt_long_rounded),
+      ('MY ORDERS', Icons.receipt_long_rounded),
       ('Payment Methods', Icons.wallet_rounded),
       ('Favorites', Icons.favorite_border_rounded),
       ('Notifications', Icons.notifications_none_rounded),
@@ -43,138 +44,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ('Terms & Conditions', Icons.description_outlined),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
+    return CurvedContentPage(
+      title: 'SETTINGS',
+      body: Container(
+        color: Colors.white,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1080, maxHeight: 2400),
-            child: Column(
+            constraints: const BoxConstraints(maxWidth: 1080),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                  color: AppColors.orange,
-                  child: const Text(
-                    'Settings',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                        stream: user == null
-                            ? null
-                            : FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(user.uid)
-                                  .snapshots(),
-                        builder: (context, snapshot) {
-                          final profile = snapshot.data?.data();
-                          final name = profile?['name'] is String
-                              ? (profile!['name'] as String).trim()
-                              : '';
-                          final photoUrl = profile?['photoUrl'] as String? ??
-                              user?.photoURL;
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            child: Row(
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: user == null
+                      ? null
+                      : FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .snapshots(),
+                  builder: (context, snapshot) {
+                    final profile = snapshot.data?.data();
+                    final name = profile?['name'] is String
+                        ? (profile!['name'] as String).trim()
+                        : '';
+                    final photoUrl =
+                        profile?['photoUrl'] as String? ?? user?.photoURL;
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE8E8E8)),
+                      ),
+                      child: Row(
+                        children: [
+                          _AccountAvatar(
+                            photoUrl: photoUrl,
+                            imageBytes: _profilePhotoBytes,
+                            isUploading: _isUploadingPhoto,
+                            onTap: _pickProfilePhoto,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _AccountAvatar(
-                                  photoUrl: photoUrl,
-                                  imageBytes: _profilePhotoBytes,
-                                  isUploading: _isUploadingPhoto,
-                                  onTap: _pickProfilePhoto,
+                                Text(
+                                  name.isEmpty ? displayName : name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name.isEmpty ? displayName : name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        email,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF666666),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF666666),
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 18),
-                      for (final item in items) ...[
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 2,
-                          ),
-                          leading: Icon(item.$2, color: AppColors.orange),
-                          title: Text(
-                            item.$1,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                          subtitle: _subtitleFor(item.$1),
-                          trailing: const Icon(
-                            Icons.chevron_right_rounded,
-                            color: Color(0xFF666666),
-                          ),
-                          onTap: () => _handleMenuTap(context, item.$1),
-                        ),
-                        const Divider(height: 1, color: Color(0xFFE9E9E9)),
-                      ],
-                      const SizedBox(height: 18),
-                      ElevatedButton.icon(
-                        onPressed: _logOut,
-                        icon: const Icon(Icons.logout_rounded),
-                        label: const Text('Log out'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.orange,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(52),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 18),
+                for (final item in items) ...[
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
+                    leading: Icon(item.$2, color: AppColors.orange),
+                    title: Text(
+                      item.$1,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
                       ),
-                    ],
+                    ),
+                    subtitle: _subtitleFor(item.$1),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF666666),
+                    ),
+                    onTap: () => _handleMenuTap(context, item.$1),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE9E9E9)),
+                ],
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: _logOut,
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Log out'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(52),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ],
@@ -202,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _handleMenuTap(BuildContext context, String title) async {
     switch (title) {
-      case 'My Orders':
+      case 'MY ORDERS':
         if (widget.onNavigateTab != null) {
           widget.onNavigateTab!(3);
         } else {

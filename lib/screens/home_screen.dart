@@ -16,10 +16,12 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.onSeeAllCategories,
     this.onNavigateTab,
+    this.onSelectCategory,
   });
 
   final VoidCallback onSeeAllCategories;
   final ValueChanged<int>? onNavigateTab;
+  final ValueChanged<String>? onSelectCategory;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -45,113 +47,131 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.orange,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 96,
-              child: Align(
-                alignment: Alignment.center,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'KKOPI.TEA',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 23,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Notifications',
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => NotificationsScreen(
-                              onNavigateTab: widget.onNavigateTab,
+      backgroundColor: const Color(0xFFF87818),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppColors.orangeGradient),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 96,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.orangeGradient,
+                  ),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(text: 'KKOPI'),
+                                  TextSpan(
+                                    text: '.TEA',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                ],
+                              ),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
-                        ),
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          color: Colors.white,
-                          size: 25,
+                          IconButton(
+                            tooltip: 'Notifications',
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => NotificationsScreen(
+                                  onNavigateTab: widget.onNavigateTab,
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: Colors.white,
+                              size: 25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                top: 96,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30),
+                    ),
+                  ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
+                    children: [
+                      AdvertisementCarousel(onSelect: _selectAdvertisement),
+                      const SizedBox(height: 18),
+                      _SectionHeading(
+                        title: 'CATEGORIES',
+                        onSeeAll: widget.onSeeAllCategories,
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 120,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: menuCategories.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final category = menuCategories[index];
+                            return SizedBox(
+                              width: 72,
+                              child: _HomeCategoryButton(
+                                icon: category.displayIcon,
+                                label: _categoryLabel(category),
+                                onTap: () => _openCategory(category.id),
+                              ),
+                            );
+                          },
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      _SectionHeading(
+                        title: 'All Products',
+                        onSeeAll: widget.onSeeAllCategories,
+                      ),
+                      const SizedBox(height: 10),
+                      for (final product in menuProducts) ...[
+                        MenuProductCard(
+                          product: product,
+                          onTap: () => _openProduct(product),
+                          onAdd: () {
+                            CartStore.add(OrderDraft(product: product));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${product.name} added to cart'),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                     ],
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              top: 96,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
-                  children: [
-                    AdvertisementCarousel(onSelect: _selectAdvertisement),
-                    const SizedBox(height: 18),
-                    _SectionHeading(
-                      title: 'Categories',
-                      onSeeAll: widget.onSeeAllCategories,
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 116,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: menuCategories.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 12),
-                        itemBuilder: (context, index) {
-                          final category = menuCategories[index];
-                          return SizedBox(
-                            width: 68,
-                            child: _HomeCategoryButton(
-                              icon: category.displayIcon,
-                              label: category.name,
-                              onTap: () => _openCategory(category.id),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionHeading(
-                      title: 'All Products',
-                      onSeeAll: widget.onSeeAllCategories,
-                    ),
-                    const SizedBox(height: 10),
-                    for (final product in menuProducts) ...[
-                      MenuProductCard(
-                        product: product,
-                        onTap: () => _openProduct(product),
-                        onAdd: () {
-                          CartStore.add(OrderDraft(product: product));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${product.name} added to cart'),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -182,6 +202,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final matching = menuCategories.where((item) => item.id == categoryId);
     if (matching.isEmpty) return;
     final category = matching.first;
+    if (widget.onSelectCategory case final onSelectCategory?) {
+      onSelectCategory(category.id);
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CategoryProductsScreen(
@@ -190,6 +214,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  String _categoryLabel(MenuCategory category) {
+    if (category.id == 'milktea') return 'Milk Tea';
+    return category.name
+        .split(RegExp(r'\s+'))
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 }
 
@@ -246,20 +282,27 @@ class _HomeCategoryButton extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFE2BD),
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                gradient: AppColors.orangeGradient,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: Colors.black87, size: 27),
+              child: Icon(icon, color: Colors.white, size: 31),
             ),
             const SizedBox(height: 5),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),

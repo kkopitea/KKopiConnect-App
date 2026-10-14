@@ -195,7 +195,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                             for (final option in addInOptions)
                               FilterChip(
                                 label: Text(
-                                  '${option.name} · P${option.price}',
+                                  '${option.name} · ${AppColors.pesoSymbol}${option.price}',
                                 ),
                                 selected: addIns.contains(option.name),
                                 onSelected: (selected) => setState(() {
@@ -240,7 +240,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                               dense: true,
                               activeColor: AppColors.orange,
                               title: Text(
-                                '${option.name} (P${option.price})',
+                                '${option.name} (${AppColors.pesoSymbol}${option.price})',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               value: addOns.contains(option.name),
@@ -284,7 +284,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                         ),
                       ),
                       Text(
-                        'P$total',
+                        '${AppColors.pesoSymbol}$total',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -311,7 +311,7 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                       );
                     }
                   },
-                  child: Text('Add to cart  P$total'),
+                  child: Text('Add to cart  ${AppColors.pesoSymbol}$total'),
                 ),
               ],
             ),
@@ -428,7 +428,7 @@ class _ProductSummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$size · P$price',
+                  '$size · ${AppColors.pesoSymbol}$price',
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textMuted,

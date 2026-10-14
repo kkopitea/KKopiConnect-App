@@ -27,5 +27,21 @@ class CartStore {
     items.value = List.unmodifiable(updated);
   }
 
+  static void removeItems(List<OrderDraft> itemsToRemove) {
+    final remainingToRemove = List<OrderDraft>.of(itemsToRemove);
+    final remaining = <OrderDraft>[];
+    for (final item in items.value) {
+      final matchingIndex = remainingToRemove.indexWhere(
+        (candidate) => identical(candidate, item),
+      );
+      if (matchingIndex >= 0) {
+        remainingToRemove.removeAt(matchingIndex);
+      } else {
+        remaining.add(item);
+      }
+    }
+    items.value = List.unmodifiable(remaining);
+  }
+
   static void clear() => items.value = const [];
 }

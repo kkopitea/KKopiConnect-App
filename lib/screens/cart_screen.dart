@@ -8,15 +8,95 @@ import '../widgets/curved_content_page.dart';
 import 'categories_screen.dart';
 import 'order_type_screen.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key, this.onNavigateTab});
 
   final ValueChanged<int>? onNavigateTab;
 
   @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  late List<OrderDraft> _knownItems;
+  final Set<int> _selectedIndexes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _knownItems = CartStore.items.value;
+    _selectedIndexes.addAll(
+      List<int>.generate(_knownItems.length, (index) => index),
+    );
+    CartStore.items.addListener(_cartChanged);
+  }
+
+  @override
+  void dispose() {
+    CartStore.items.removeListener(_cartChanged);
+    super.dispose();
+  }
+
+  void _cartChanged() {
+    final currentItems = CartStore.items.value;
+    final previousItems = _knownItems;
+    final matchedPreviousIndexes = <int>{};
+    final updatedSelection = <int>{};
+
+    for (var currentIndex = 0; currentIndex < currentItems.length; currentIndex++) {
+      final item = currentItems[currentIndex];
+      var previousIndex = -1;
+      for (var index = 0; index < previousItems.length; index++) {
+        if (!matchedPreviousIndexes.contains(index) &&
+            identical(previousItems[index], item)) {
+          previousIndex = index;
+          break;
+        }
+      }
+      if (previousIndex >= 0) {
+        matchedPreviousIndexes.add(previousIndex);
+        if (_selectedIndexes.contains(previousIndex)) {
+          updatedSelection.add(currentIndex);
+        }
+      } else if (currentItems.length == previousItems.length &&
+          currentIndex < previousItems.length &&
+          currentItems[currentIndex].product.id ==
+              previousItems[currentIndex].product.id &&
+          _selectedIndexes.contains(currentIndex)) {
+        updatedSelection.add(currentIndex);
+      } else if (currentIndex >= previousItems.length) {
+        updatedSelection.add(currentIndex);
+      }
+    }
+
+    _knownItems = currentItems;
+    if (mounted) {
+      setState(() {
+        _selectedIndexes
+          ..clear()
+          ..addAll(updatedSelection);
+      });
+    }
+  }
+
+  void _removeAt(int index) {
+    CartStore.removeAt(index);
+  }
+
+  void _toggleSelection(int index, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedIndexes.add(index);
+      } else {
+        _selectedIndexes.remove(index);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CurvedContentPage(
-      title: 'My Cart',
+      title: 'MY CART',
       body: ValueListenableBuilder<List<OrderDraft>>(
         valueListenable: CartStore.items,
         builder: (context, items, _) {
@@ -49,8 +129,8 @@ class CartScreen extends StatelessWidget {
                     const SizedBox(height: 14),
                     FilledButton(
                       onPressed: () {
-                        if (onNavigateTab != null) {
-                          onNavigateTab!(1);
+                        if (widget.onNavigateTab != null) {
+                          widget.onNavigateTab!(1);
                         } else if (Navigator.of(context).canPop()) {
                           Navigator.of(context).pop();
                         } else {
@@ -73,10 +153,42 @@ class CartScreen extends StatelessWidget {
             );
           }
 
-          final subtotal = items.fold<int>(0, (sum, item) => sum + item.total);
-          final count = items.fold<int>(0, (sum, item) => sum + item.quantity);
+          final selectedItems = [
+            for (var index = 0; index < items.length; index++)
+              if (_selectedIndexes.contains(index)) items[index],
+          ];
+          final subtotal = selectedItems.fold<int>(
+            0,
+            (sum, item) => sum + item.total,
+          );
+          final count = selectedItems.fold<int>(
+            0,
+            (sum, item) => sum + item.quantity,
+          );
           return Column(
             children: [
+              CheckboxListTile(
+                value: items.isNotEmpty &&
+                    _selectedIndexes.length == items.length,
+                tristate: true,
+                title: const Text(
+                  'Select all for order',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: AppColors.orange,
+                onChanged: (selected) {
+                  setState(() {
+                    _selectedIndexes
+                      ..clear()
+                      ..addAll(
+                        selected == true
+                            ? List<int>.generate(items.length, (index) => index)
+                            : const <int>[],
+                      );
+                  });
+                },
+              ),
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.all(14),
@@ -84,9 +196,12 @@ class CartScreen extends StatelessWidget {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => _CartItemTile(
                     draft: items[index],
+                    selected: _selectedIndexes.contains(index),
+                    onSelectionChanged: (selected) =>
+                        _toggleSelection(index, selected),
                     onQuantityChanged: (quantity) =>
                         CartStore.updateQuantity(index, quantity),
-                    onRemove: () => CartStore.removeAt(index),
+                    onRemove: () => _removeAt(index),
                   ),
                 ),
               ),
@@ -108,7 +223,7 @@ class CartScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'P$subtotal',
+                            '${AppColors.pesoSymbol}$subtotal',
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ],
@@ -122,7 +237,7 @@ class CartScreen extends StatelessWidget {
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            'P$subtotal',
+                            '${AppColors.pesoSymbol}$subtotal',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 17,
@@ -135,11 +250,13 @@ class CartScreen extends StatelessWidget {
                         width: double.infinity,
                         height: 48,
                         child: FilledButton(
-                          onPressed: () => Navigator.of(context).push(
+                          onPressed: selectedItems.isEmpty
+                              ? null
+                              : () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (_) => OrderTypeScreen(
-                                drafts: items,
-                                onNavigateTab: onNavigateTab,
+                                drafts: List.unmodifiable(selectedItems),
+                                onNavigateTab: widget.onNavigateTab,
                               ),
                             ),
                           ),
@@ -168,11 +285,15 @@ class CartScreen extends StatelessWidget {
 class _CartItemTile extends StatelessWidget {
   const _CartItemTile({
     required this.draft,
+    required this.selected,
+    required this.onSelectionChanged,
     required this.onQuantityChanged,
     required this.onRemove,
   });
 
   final OrderDraft draft;
+  final bool selected;
+  final ValueChanged<bool> onSelectionChanged;
   final ValueChanged<int> onQuantityChanged;
   final VoidCallback onRemove;
 
@@ -193,6 +314,12 @@ class _CartItemTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Checkbox(
+            value: selected,
+            activeColor: AppColors.orange,
+            semanticLabel: 'Select ${draft.product.name} for order',
+            onChanged: (value) => onSelectionChanged(value ?? false),
+          ),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: CloudinaryImage(
@@ -230,7 +357,7 @@ class _CartItemTile extends StatelessWidget {
                   ),
                 const SizedBox(height: 6),
                 Text(
-                  'P${draft.total}',
+                  '${AppColors.pesoSymbol}${draft.total}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,

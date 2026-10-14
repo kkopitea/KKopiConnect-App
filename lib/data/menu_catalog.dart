@@ -22,15 +22,15 @@ class MenuCategory {
     _ => icon,
   };
 
-  factory MenuCategory.fromFirestore(String id, Map<String, dynamic> data) =>
-      MenuCategory(
-        id: id,
-        name: data['name'] as String? ?? '',
-        icon:
-            _categoryIcons[data['iconKey'] as String?] ??
-            Icons.category_rounded,
-        sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
-      );
+  factory MenuCategory.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) => MenuCategory(
+    id: id,
+    name: data['name'] as String? ?? '',
+    icon: _categoryIcons[data['iconKey'] as String?] ?? Icons.category_rounded,
+    sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
+  );
 }
 
 const _categoryIcons = <String, IconData>{
@@ -73,10 +73,7 @@ class MenuProduct {
   final List<(String, int)> sizes;
   final List<String> sugarLevels;
 
-  static MenuProduct? fromFirestore(
-    String id,
-    Map<String, dynamic> data,
-  ) {
+  static MenuProduct? fromFirestore(String id, Map<String, dynamic> data) {
     final name = data['name'];
     final rawPrice = data['price'] ?? data['basePrice'];
     final available = data['available'] ?? data['isAvailable'];
@@ -148,7 +145,7 @@ String _categoryIdForValue(String value) {
 const defaultMenuCategories = <MenuCategory>[
   MenuCategory(
     id: 'milktea',
-    name: 'Milktea',
+    name: 'Milk Tea',
     icon: Icons.local_drink_rounded,
   ),
   MenuCategory(id: 'coffee', name: 'Coffee', icon: Icons.coffee_rounded),
@@ -162,8 +159,9 @@ const defaultMenuCategories = <MenuCategory>[
 ];
 
 List<MenuCategory> menuCategories = List.unmodifiable(defaultMenuCategories);
-final ValueNotifier<List<MenuCategory>> menuCategoriesNotifier =
-    ValueNotifier(menuCategories);
+final ValueNotifier<List<MenuCategory>> menuCategoriesNotifier = ValueNotifier(
+  menuCategories,
+);
 
 void updateMenuCategories(List<MenuCategory> categories) {
   menuCategories = List.unmodifiable(
@@ -176,7 +174,8 @@ List<MenuProduct> menuProducts = <MenuProduct>[
   MenuProduct(
     id: 'iced-americano-caramel',
     name: 'Iced Americano Caramel',
-    description: 'Bold, refreshing iced black coffee sweetened with a smooth swirl of rich caramel syrup.',
+    description:
+        'Bold, refreshing iced black coffee sweetened with a smooth swirl of rich caramel syrup.',
     price: 50,
     categoryId: 'coffee',
     categoryIds: ['coffee'],
@@ -186,7 +185,8 @@ List<MenuProduct> menuProducts = <MenuProduct>[
   MenuProduct(
     id: 'vanilla-americano-latte-tea',
     name: 'Vanilla Americano Latte Tea',
-    description: 'A refreshing blend of bold espresso, creamy milk, and sweet vanilla over chewy boba pearls.',
+    description:
+        'A refreshing blend of bold espresso, creamy milk, and sweet vanilla over chewy boba pearls.',
     price: 50,
     categoryId: 'milktea',
     categoryIds: ['milktea', 'coffee'],
@@ -195,7 +195,8 @@ List<MenuProduct> menuProducts = <MenuProduct>[
   MenuProduct(
     id: 'caramel-caffuccino',
     name: 'Caramel Caffuccino',
-    description: 'A warm, comforting cup of rich espresso and frothy milk, balanced with a sweet splash of caramel.',
+    description:
+        'A warm, comforting cup of rich espresso and frothy milk, balanced with a sweet splash of caramel.',
     price: 50,
     categoryId: 'coffee',
     categoryIds: ['coffee'],

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/services.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
@@ -21,12 +25,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   bool _isSending = false;
   final List<_ChatMessage> _messages = [
     const _ChatMessage(
-      text: 'Hi! I can help you explore our menu, check prices, find best sellers, and place an order.',
+      text:
+          'Hi! I can help you explore our menu, check prices, find best sellers, and place an order.',
       fromUser: false,
     ),
   ];
 
   static const _quickPrompts = [
+    'Recommend a drink for me',
     'Show best sellers',
     'What fruit tea do you have?',
     'How do I place an order?',
@@ -47,119 +53,159 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      appBar: AppBar(
-        backgroundColor: AppColors.orange,
-        foregroundColor: Colors.white,
-        titleSpacing: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'KKOPI.TEA Assistant',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              'MENU AND ORDER HELP',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.white,
+        systemNavigationBarContrastEnforced: false,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
-              itemCount: _messages.length + (_isSending ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length) {
-                  return const _TypingIndicator();
-                }
-                if (index == 0 && _messages.length == 1) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF87818),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          flexibleSpace: const DecoratedBox(
+            decoration: BoxDecoration(gradient: AppColors.orangeGradient),
+          ),
+          titleSpacing: 0,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'KKOPI.TEA Assistant',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              Text(
+                'MENU AND ORDER HELP',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: AppColors.orangeGradient),
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30),
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
+                    itemCount: _messages.length + (_isSending ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return const _TypingIndicator();
+                      }
+                      if (index == 0 && _messages.length == 1) {
+                        return _MessageBubble(message: _messages.first);
+                      }
+                      return _MessageBubble(message: _messages[index]);
+                    },
+                  ),
+                ),
+              ),
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Color(0xFFE5E5E5))),
+                ),
+                padding: const EdgeInsets.fromLTRB(12, 4, 8, 10),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _MessageBubble(message: _messages.first),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'TRY ASKING',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
+                      SizedBox(
+                        height: 42,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _quickPrompts.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 18),
+                          itemBuilder: (context, index) {
+                            final prompt = _quickPrompts[index];
+                            return Center(
+                              child: Semantics(
+                                button: true,
+                                label: prompt,
+                                child: InkWell(
+                                  onTap: _isSending
+                                      ? null
+                                      : () => _send(prompt),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      prompt,
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          for (final prompt in _quickPrompts)
-                            ActionChip(
-                              label: Text(prompt),
-                              onPressed: () => _send(prompt),
-                              side: const BorderSide(color: Color(0xFFE5E5E5)),
-                              backgroundColor: Colors.white,
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              minLines: 1,
+                              maxLines: 4,
+                              textCapitalization: TextCapitalization.sentences,
+                              onSubmitted: _isSending ? null : _send,
+                              decoration: InputDecoration(
+                                hintText: 'Ask about the menu or your order',
+                                filled: true,
+                                fillColor: AppColors.inputFill,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            tooltip: 'Send message',
+                            onPressed: _isSending
+                                ? null
+                                : () => _send(_messageController.text),
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.arrow_upward_rounded),
+                          ),
                         ],
                       ),
                     ],
-                  );
-                }
-                return _MessageBubble(message: _messages[index]);
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      minLines: 1,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                      onSubmitted: _isSending ? null : _send,
-                      decoration: InputDecoration(
-                        hintText: 'Ask about the menu or your order',
-                        filled: true,
-                        fillColor: AppColors.inputFill,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(22),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: 'Send message',
-                    onPressed: _isSending
-                        ? null
-                        : () => _send(_messageController.text),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.orange,
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.arrow_upward_rounded),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -174,15 +220,31 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
     _scrollToLatestMessage();
 
-    String reply;
+    late final String reply;
     try {
       reply = await _chatbotService
           .replyTo(text, menuProducts)
           .timeout(const Duration(seconds: 45));
-    } catch (error) {
-      if (kDebugMode) debugPrint('Chatbot request failed: $error');
-      reply =
-          'I could not reach the assistant just now. Please check your connection and try again in a moment.';
+    } on TimeoutException catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Chatbot request timed out: $error\n$stackTrace');
+      }
+      reply = kDebugMode
+          ? 'The assistant request timed out after 45 seconds. Check your '
+                'connection, Firebase AI Logic, and App Check setup.'
+          : 'The assistant took too long to respond. Please try again.';
+    } on FirebaseAIException catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Firebase AI request failed: $error\n$stackTrace');
+      }
+      reply = error.message;
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Chatbot request failed: $error\n$stackTrace');
+      }
+      reply = kDebugMode
+          ? 'Chatbot error (${error.runtimeType}): $error'
+          : 'I could not reach the assistant just now. Please check your connection and try again in a moment.';
     }
     if (!mounted) return;
     setState(() {

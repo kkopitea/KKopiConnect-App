@@ -11,7 +11,7 @@ class SearchAnalyticsRepository {
   CollectionReference<Map<String, dynamic>> get _popularSearches =>
       _firestore.collection('popularSearches');
 
-  Stream<List<String>> watchPopularSearches({int limit = 5}) =>
+  Stream<List<String>> watchPopularSearches({int limit = 50}) =>
       _popularSearches
           .orderBy('searchCount', descending: true)
           .limit(limit)
@@ -22,6 +22,23 @@ class SearchAnalyticsRepository {
                 .whereType<String>()
                 .toList(growable: false),
           );
+
+  static List<String> matchingProductNames({
+    required List<String> searchTerms,
+    required Iterable<String> productNames,
+  }) {
+    final canonicalNames = {
+      for (final name in productNames) name.trim().toLowerCase(): name,
+    };
+    final matchedNames = <String>[];
+    for (final term in searchTerms) {
+      final name = canonicalNames[term.trim().toLowerCase()];
+      if (name != null && !matchedNames.contains(name)) {
+        matchedNames.add(name);
+      }
+    }
+    return List.unmodifiable(matchedNames);
+  }
 
   Future<void> recordSearch(String rawTerm) async {
     final term = rawTerm.trim().replaceAll(RegExp(r'\s+'), ' ');

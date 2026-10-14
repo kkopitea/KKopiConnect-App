@@ -30,7 +30,7 @@ void main() {
       size: 'Large',
       sizePrice: 100,
       sugar: '25%',
-      ice: '50%',
+      ice: '25%',
       addIns: const {'Pearls'},
       addOns: const {'Coffee Jelly'},
     );
@@ -42,6 +42,7 @@ void main() {
     expect(restored.size, 'Large');
     expect(restored.addIns, contains('Pearls'));
     expect(restored.addOns, contains('Coffee Jelly'));
+    expect(restored.ice, '25%');
     expect(restored.total, draft.total);
   });
 
@@ -71,7 +72,7 @@ void main() {
 
       await tester.tap(find.text('View my orders'));
       await tester.pumpAndSettle();
-      expect(find.text('My Orders'), findsOneWidget);
+      expect(find.text('MY ORDERS'), findsOneWidget);
       expect(find.textContaining('KK'), findsOneWidget);
     },
   );

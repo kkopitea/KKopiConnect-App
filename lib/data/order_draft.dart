@@ -67,20 +67,44 @@ class OrderDraft {
     final matchingProducts = menuProducts.where(
       (product) => product.id == productId,
     );
-    final product = matchingProducts.isEmpty
+    final currentProduct = matchingProducts.firstOrNull;
+    final hasProductSnapshot =
+        map['productName'] is String || map['productPrice'] is num;
+    final product = hasProductSnapshot
         ? MenuProduct(
             id: productId,
-            name: map['productName'] as String? ?? 'Menu item',
-            description: map['productDescription'] as String? ?? '',
-            price: (map['productPrice'] as num?)?.toInt() ?? 0,
-            categoryId: '',
-            categoryIds: const [],
+            name: map['productName'] as String? ?? currentProduct?.name ?? 'Menu item',
+            description:
+                map['productDescription'] as String? ??
+                currentProduct?.description ??
+                '',
+            price:
+                (map['productPrice'] as num?)?.toInt() ??
+                currentProduct?.price ??
+                0,
+            categoryId: currentProduct?.categoryId ?? '',
+            categoryIds: currentProduct?.categoryIds ?? const [],
             imageAsset:
                 map['productImageAsset'] as String? ??
+                currentProduct?.imageAsset ??
                 'assets/images/welcome_drink.png',
-            imageUrl: map['productImageUrl'] as String?,
+            imageUrl: map.containsKey('productImageUrl')
+                ? map['productImageUrl'] as String?
+                : currentProduct?.imageUrl,
           )
-        : matchingProducts.first;
+        : currentProduct ??
+              MenuProduct(
+                id: productId,
+                name: map['productName'] as String? ?? 'Menu item',
+                description: map['productDescription'] as String? ?? '',
+                price: (map['productPrice'] as num?)?.toInt() ?? 0,
+                categoryId: '',
+                categoryIds: const [],
+                imageAsset:
+                    map['productImageAsset'] as String? ??
+                    'assets/images/welcome_drink.png',
+                imageUrl: map['productImageUrl'] as String?,
+              );
 
     return OrderDraft(
       product: product,

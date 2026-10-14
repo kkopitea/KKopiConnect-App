@@ -192,11 +192,11 @@ the document contains `id` and `orderId` (both the document ID), `userId` and
 `items`, `fulfillment` and `orderType` (same value: `Pickup` or `Dine In`),
 `paymentMethod`, `instructions`, `status`, `total`, `createdAt` (Firestore
 server timestamp), and `updatedAt` (Firestore server timestamp). Each item
-contains product identity/details, quantity, size, sugar, selected extras and
-their saved prices, and line total. The admin app should listen to the
-`orders` collection and change the shared `status` field on the existing
-document to publish status updates to the customer app in real time; do not
-create a second order collection or replace the document.
+contains product identity/details, quantity, size, sugar and ice selections,
+selected extras and their saved prices, and line total. The admin app should
+listen to the `orders` collection and change the shared `status` field on the
+existing document to publish status updates to the customer app in real time;
+do not create a second order collection or replace the document.
 
 A signed-in customer must be permitted to create an order whose `userId`
 matches their Firebase Auth UID, read only their own orders, and update only
@@ -224,7 +224,7 @@ Admin SDK, not by allowing clients to update arbitrary order fields. If placing
 an order reports `permission-denied`, check this match and the Firebase Console
 App Check enforcement settings for the app.
 
-The assistant uses Firebase AI Logic with `gemini-2.5-flash`. Enable Firebase AI
+The assistant uses Firebase AI Logic with `gemini-3.5-flash`. Enable Firebase AI
 Logic for the configured Firebase project and register the Android debug
 App Check token printed by a debug run in Firebase Console > App Check before
 testing AI requests on a debug device.

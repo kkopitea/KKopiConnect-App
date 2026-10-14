@@ -244,7 +244,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'P$_selectedPrice',
+                                      '${AppColors.pesoSymbol}$_selectedPrice',
                                       style: const TextStyle(
                                         color: AppColors.orange,
                                         fontSize: 24,
@@ -331,7 +331,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                     ),
                                                   ),
                                                   Text(
-                                                    'P${option.$2}',
+                                                    '${AppColors.pesoSymbol}${option.$2}',
                                                     style: const TextStyle(
                                                       fontSize: 11,
                                                     ),

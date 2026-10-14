@@ -69,7 +69,7 @@ class MenuProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'P${product.price}',
+                      '${AppColors.pesoSymbol}${product.price}',
                       style: const TextStyle(
                         color: AppColors.orange,
                         fontSize: 16,

@@ -20,7 +20,7 @@ class CurvedContentPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
     return Scaffold(
-      backgroundColor: AppColors.orange,
+      backgroundColor: const Color(0xFFFF8423),
       bottomNavigationBar: bottomNavigationBar,
       body: SafeArea(
         child: Stack(
@@ -30,12 +30,16 @@ class CurvedContentPage extends StatelessWidget {
               left: 0,
               right: 0,
               height: 108,
-              child: Align(
-                alignment: const Alignment(0, -0.18),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: AppColors.orangeGradient,
+                ),
+                child: Align(
+                  alignment: const Alignment(0, -0.18),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
                       if (canPop)
                         IconButton(
                           tooltip: 'Back',
@@ -46,25 +50,64 @@ class CurvedContentPage extends StatelessWidget {
                       else
                         const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ).copyWith(
-                                fontSize: title.length > 22
-                                    ? 16
-                                    : title.length > 18
-                                    ? 18
-                                    : 21,
+                        child: title == 'MY ORDERS'
+                            ? Text.rich(
+                                const TextSpan(
+                                  children: [
+                                    TextSpan(text: 'MY '),
+                                    TextSpan(
+                                      text: 'ORDERS',
+                                      style: TextStyle(color: Colors.black),
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 21,
+                                ),
+                              )
+                            : title == 'MY CART'
+                            ? Text.rich(
+                                const TextSpan(
+                                  children: [
+                                    TextSpan(text: 'MY '),
+                                    TextSpan(
+                                      text: 'CART',
+                                      style: TextStyle(color: Colors.black),
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 21,
+                                ),
+                              )
+                            : Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style:
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ).copyWith(
+                                      fontSize: title.length > 22
+                                          ? 16
+                                          : title.length > 18
+                                          ? 18
+                                          : 21,
+                                    ),
                               ),
-                        ),
                       ),
                       ...actions,
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

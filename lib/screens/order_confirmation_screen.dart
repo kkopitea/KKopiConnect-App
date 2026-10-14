@@ -16,7 +16,9 @@ class OrderConfirmationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orderLabel = order.items.length == 1
+    final orderLabel = order.items.isEmpty
+        ? 'Your order'
+        : order.items.length == 1
         ? order.items.first.product.name
         : '${order.items.first.product.name} + ${order.items.length - 1} more';
 
@@ -132,7 +134,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Order ${order.formattedId} · P${order.total}',
+                  'Order ${order.formattedId} · ${AppColors.pesoSymbol}${order.total}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.textMuted,

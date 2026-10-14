@@ -152,13 +152,17 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
                     RadioGroup<String>(
                       groupValue: _paymentMethod,
                       onChanged: (value) {
-                        if (value != null) setState(() => _paymentMethod = value);
+                        if (value != null) {
+                          setState(() => _paymentMethod = value);
+                        }
                       },
                       child: Column(
                         children: [
-                          for (var index = 0;
-                              index < _paymentMethods.length;
-                              index++) ...[
+                          for (
+                            var index = 0;
+                            index < _paymentMethods.length;
+                            index++
+                          ) ...[
                             if (index > 0) const Divider(height: 1),
                             RadioListTile<String>(
                               value: _paymentMethods[index].name,
@@ -235,7 +239,7 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
                       ),
                     ),
                     Text(
-                      'P$total',
+                      '${AppColors.pesoSymbol}$total',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -247,109 +251,121 @@ class _OrderTypeScreenState extends State<OrderTypeScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          FilledButton(
-            onPressed:
-                _isPlacingOrder ||
-                    drafts.isEmpty ||
-                    _paymentMethodsError != null ||
-                    !_paymentMethodsLoaded ||
-                    _paymentMethods.isEmpty
-                ? null
-                : () async {
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Your session expired. Please sign in again.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    setState(() => _isPlacingOrder = true);
-                    String? pendingOrderId;
-                    try {
-                      final order = OrdersStore.createOrder(
-                        items: drafts,
-                        fulfillment: _pickup ? 'Pickup' : 'Dine In',
-                        paymentMethod: _paymentMethod,
-                        instructions: _noteController.text.trim(),
-                      );
-                      pendingOrderId = order.id;
-
-                      await FirestoreOrderRepository().saveOrder(
-                        user.uid,
-                        order,
-                      );
-                      CartStore.clear();
-
-                      if (!context.mounted) return;
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => OrderConfirmationScreen(
-                            order: order,
-                            onNavigateTab: widget.onNavigateTab,
-                          ),
-                        ),
-                      );
-                    } on FirebaseException catch (error, stackTrace) {
-                      debugPrint(
-                        'Unable to place order (${error.code}): $error\n$stackTrace',
-                      );
-                      if (pendingOrderId != null) {
-                        OrdersStore.removeOrder(pendingOrderId);
-                      }
-                      if (!context.mounted) return;
-                      final message = switch (error.code) {
-                        'permission-denied' =>
-                          'Order was not saved. Check Firestore order permissions and App Check setup.',
-                        'unauthenticated' =>
-                          'Your session expired. Please sign in again.',
-                        'unavailable' || 'deadline-exceeded' =>
-                          'Could not reach the order service. Check your connection and try again.',
-                        _ =>
-                          'Could not save your order (${error.code}). Please try again.',
-                      };
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(message)));
-                    } catch (error, stackTrace) {
-                      debugPrint('Unable to place order: $error\n$stackTrace');
-                      if (pendingOrderId != null) {
-                        OrdersStore.removeOrder(pendingOrderId);
-                      }
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Could not place the order. Please try again.',
-                          ),
-                        ),
-                      );
-                    } finally {
-                      if (mounted) setState(() => _isPlacingOrder = false);
-                    }
-                  },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.orange,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(54),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.orangeGradient,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: _isPlacingOrder
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+            child: FilledButton(
+              onPressed:
+                  _isPlacingOrder ||
+                      drafts.isEmpty ||
+                      _paymentMethodsError != null ||
+                      !_paymentMethodsLoaded ||
+                      _paymentMethods.isEmpty
+                  ? null
+                  : () async {
+                      final user = FirebaseAuth.instance.currentUser;
+                      if (user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Your session expired. Please sign in again.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      setState(() => _isPlacingOrder = true);
+                      String? pendingOrderId;
+                      try {
+                        final order = OrdersStore.createOrder(
+                          items: drafts,
+                          fulfillment: _pickup ? 'Pickup' : 'Dine In',
+                          paymentMethod: _paymentMethod,
+                          instructions: _noteController.text.trim(),
+                        );
+                        pendingOrderId = order.id;
+
+                        await FirestoreOrderRepository().saveOrder(
+                          user.uid,
+                          order,
+                        );
+                        CartStore.removeItems(drafts);
+
+                        if (!context.mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => OrderConfirmationScreen(
+                              order: order,
+                              onNavigateTab: widget.onNavigateTab,
+                            ),
+                          ),
+                        );
+                      } on FirebaseException catch (error, stackTrace) {
+                        debugPrint(
+                          'Unable to place order (${error.code}): $error\n$stackTrace',
+                        );
+                        if (pendingOrderId != null) {
+                          OrdersStore.removeOrder(pendingOrderId);
+                        }
+                        if (!context.mounted) return;
+                        final message = switch (error.code) {
+                          'permission-denied' =>
+                            'Order was not saved. Check Firestore order permissions and App Check setup.',
+                          'unauthenticated' =>
+                            'Your session expired. Please sign in again.',
+                          'unavailable' || 'deadline-exceeded' =>
+                            'Could not reach the order service. Check your connection and try again.',
+                          _ =>
+                            'Could not save your order (${error.code}). Please try again.',
+                        };
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      } catch (error, stackTrace) {
+                        debugPrint(
+                          'Unable to place order: $error\n$stackTrace',
+                        );
+                        if (pendingOrderId != null) {
+                          OrdersStore.removeOrder(pendingOrderId);
+                        }
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Could not place the order. Please try again.',
+                            ),
+                          ),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isPlacingOrder = false);
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(54),
+                shadowColor: Colors.transparent,
+              ),
+              child: _isPlacingOrder
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Place Order',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  )
-                : const Text(
-                    'Place Order',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                  ),
+            ),
           ),
         ],
       ),
@@ -411,7 +427,7 @@ class _OrderLineSummary extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'P${draft.total}',
+          '${AppColors.pesoSymbol}${draft.total}',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ],
@@ -437,7 +453,7 @@ class _ReceiveOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: selected ? Colors.transparent : Colors.white,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -446,32 +462,38 @@ class _ReceiveOption extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 128),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.orangeTint : Colors.white,
+            gradient: selected ? AppColors.orangeGradient : null,
+            color: selected ? null : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.orange : const Color(0xFFE0E0E0),
+              color: selected ? Colors.transparent : const Color(0xFFE0E0E0),
               width: selected ? 2 : 1,
             ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 38, color: Colors.black87),
+              Icon(
+                icon,
+                size: 38,
+                color: selected ? Colors.white : Colors.black87,
+              ),
               const SizedBox(height: 6),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
+                  color: selected ? Colors.white : Colors.black,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
-                  color: AppColors.textMuted,
+                  color: selected ? Colors.white70 : AppColors.textMuted,
                 ),
               ),
               if (selected)
@@ -479,7 +501,7 @@ class _ReceiveOption extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Icon(
                     Icons.check_circle,
-                    color: AppColors.orange,
+                    color: Colors.white,
                     size: 18,
                   ),
                 ),

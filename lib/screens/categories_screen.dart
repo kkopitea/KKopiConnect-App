@@ -14,9 +14,14 @@ import '../widgets/curved_content_page.dart';
 import '../widgets/menu_product_card.dart';
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key, this.onNavigateTab});
+  const CategoriesScreen({
+    super.key,
+    this.onNavigateTab,
+    this.selectedCategoryId,
+  });
 
   final ValueChanged<int>? onNavigateTab;
+  final String? selectedCategoryId;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -31,7 +36,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void initState() {
     super.initState();
+    _activeCategoryId = widget.selectedCategoryId;
     menuCategoriesNotifier.addListener(_categoriesChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant CategoriesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedCategoryId != widget.selectedCategoryId) {
+      _activeCategoryId = widget.selectedCategoryId;
+    }
   }
 
   @override
@@ -68,7 +82,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Widget build(BuildContext context) {
     final products = _visibleProducts;
     return CurvedContentPage(
-      title: 'Menu',
+      title: 'MENU',
       actions: [
         IconButton(
           tooltip: 'Search products',
@@ -256,25 +270,27 @@ class _FilterTab extends StatelessWidget {
         child: Column(
           children: [
             Expanded(
-              child: Center(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected ? AppColors.orange : AppColors.textMuted,
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  gradient: selected ? AppColors.orangeGradient : null,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: selected
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Container(
-              height: 2,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.orange : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ],
@@ -296,7 +312,7 @@ class _CategoryCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 58,
+      height: 76,
       color: Colors.white,
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
@@ -314,7 +330,7 @@ class _CategoryCarousel extends StatelessWidget {
                 ),
                 for (final category in menuCategories)
                   _CategoryTab(
-                    label: category.name,
+                    label: _categoryLabel(category),
                     icon: category.displayIcon,
                     selected: selectedCategoryId == category.id,
                     onTap: () => onSelected(category.id),
@@ -325,6 +341,18 @@ class _CategoryCarousel extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _categoryLabel(MenuCategory category) {
+    if (category.id == 'milktea') return 'Milk Tea';
+    return category.name
+        .split(RegExp(r'\s+'))
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 }
 
@@ -343,36 +371,33 @@ class _CategoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.orange : AppColors.textMuted;
+    final color = selected ? Colors.white : AppColors.textMuted;
     return Semantics(
       button: true,
       selected: selected,
       label: label,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            gradient: selected ? AppColors.orangeGradient : null,
+            color: selected ? null : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 8),
-              Icon(icon, size: 16, color: color),
-              const SizedBox(height: 2),
+              Icon(icon, size: 23, color: color),
+              const SizedBox(height: 3),
               Text(
                 label,
                 style: TextStyle(
-                  color: color,
-                  fontSize: 10,
+                  color: selected ? Colors.white : AppColors.textMuted,
+                  fontSize: 11,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                width: 32,
-                height: 2,
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.orange : Colors.transparent,
-                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ],

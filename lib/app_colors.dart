@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
+  static const pesoSymbol = '₱';
   static const orange = Color(0xFFFF7900);
+  static const orangeGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFFF922F),
+      Color(0xFFFF8423),
+      Color(0xFFF87818),
+    ],
+    stops: [0, 0.45, 1],
+  );
   static const orangeLight = Color(0xFFFFB37A);
   static const orangeTint = Color(0xFFFFF1E6);
   static const pageBackground = Color(0xFFF5F5F5);

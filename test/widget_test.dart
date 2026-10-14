@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 
 import 'package:kkopiconnect_app/main.dart';
 import 'package:kkopiconnect_app/screens/cart_screen.dart';
@@ -21,6 +22,19 @@ import 'package:kkopiconnect_app/services/chatbot_service.dart';
 import 'package:kkopiconnect_app/state/cart_store.dart';
 
 void main() {
+  test('removing ordered cart items leaves unselected items in the cart', () {
+    CartStore.clear();
+    final selectedItem = OrderDraft(product: menuProducts[0]);
+    final unselectedItem = OrderDraft(product: menuProducts[1]);
+    CartStore.add(selectedItem);
+    CartStore.add(unselectedItem);
+
+    CartStore.removeItems([selectedItem]);
+
+    expect(CartStore.items.value, [same(unselectedItem)]);
+    CartStore.clear();
+  });
+
   testWidgets('app starts on the splash screen', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const KkopiTeaApp());
@@ -63,6 +77,64 @@ void main() {
         (product) => product.name == 'Mango Fruit Tea',
       ),
       isTrue,
+    );
+  });
+
+  testWidgets('quick prompt appears as a user message in the chat', (
+    tester,
+  ) async {
+    final chatbotService = _FakeChatbotReplyService();
+    await tester.pumpWidget(
+      MaterialApp(home: ChatbotScreen(chatbotService: chatbotService)),
+    );
+    await tester.pumpAndSettle();
+
+    const prompt = 'Recommend a drink for me';
+    await tester.tap(find.text(prompt));
+    await tester.pumpAndSettle();
+
+    expect(find.text(prompt), findsNWidgets(2));
+    expect(find.text('Here is the current menu information.'), findsOneWidget);
+    expect(chatbotService.lastQuestion, prompt);
+  });
+
+  testWidgets('Firebase AI setup errors are shown in the chat', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChatbotScreen(chatbotService: _FailingChatbotReplyService()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Tell me about your store');
+    await tester.tap(find.byTooltip('Send message'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Enable Firebase AI Logic in Firebase Console.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('unexpected chatbot errors are visible in debug builds', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChatbotScreen(
+          chatbotService: _UnexpectedFailingChatbotReplyService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Recommend a drink for me');
+    await tester.tap(find.byTooltip('Send message'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Chatbot error (StateError): Bad state: test failure'),
+      findsOneWidget,
     );
   });
 
@@ -113,9 +185,36 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: CartScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('My Cart'), findsOneWidget);
+    expect(find.text('MY CART'), findsOneWidget);
     expect(find.text('Your cart is empty'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cart selection controls which items can proceed to checkout', (
+    WidgetTester tester,
+  ) async {
+    CartStore.clear();
+    CartStore.add(OrderDraft(product: menuProducts[0]));
+    CartStore.add(OrderDraft(product: menuProducts[1]));
+    await tester.pumpWidget(const MaterialApp(home: CartScreen()));
+    await tester.pumpAndSettle();
+
+    final proceedButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Proceed'),
+    );
+    expect(proceedButton.onPressed, isNotNull);
+    expect(find.text('Subtotal (2 items)'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('Subtotal (1 item)'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    final disabledProceedButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Proceed'),
+    );
+    expect(disabledProceedButton.onPressed, isNull);
+    expect(CartStore.items.value, hasLength(2));
   });
 
   testWidgets('Coffee Jelly is unchecked by default and after reset', (
@@ -132,10 +231,10 @@ void main() {
 
     final coffeeJellyFinder = find.widgetWithText(
       CheckboxListTile,
-      'Coffee Jelly (P30)',
+      'Coffee Jelly (₱30)',
     );
     await tester.scrollUntilVisible(
-      find.text('Coffee Jelly (P30)'),
+      find.text('Coffee Jelly (₱30)'),
       180,
       scrollable: find.byType(Scrollable).first,
     );
@@ -178,5 +277,19 @@ class _FakeChatbotReplyService implements ChatbotReplyService {
     lastQuestion = question;
     lastProducts = products;
     return 'Here is the current menu information.';
+  }
+}
+
+class _FailingChatbotReplyService implements ChatbotReplyService {
+  @override
+  Future<String> replyTo(String question, List<MenuProduct> products) {
+    throw FirebaseAIException('Enable Firebase AI Logic in Firebase Console.');
+  }
+}
+
+class _UnexpectedFailingChatbotReplyService implements ChatbotReplyService {
+  @override
+  Future<String> replyTo(String question, List<MenuProduct> products) {
+    throw StateError('test failure');
   }
 }

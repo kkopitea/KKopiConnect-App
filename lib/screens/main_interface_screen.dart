@@ -23,6 +23,7 @@ class MainInterfaceScreen extends StatefulWidget {
 
 class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   int _selectedIndex = 0;
+  String? _requestedCategoryId;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _productsSubscription;
   StreamSubscription<List<MenuCategory>>? _categoriesSubscription;
@@ -69,14 +70,25 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
     HomeScreen(
       onSeeAllCategories: () => _selectTab(1),
       onNavigateTab: _selectTab,
+      onSelectCategory: _openCategory,
     ),
-    CategoriesScreen(onNavigateTab: _selectTab),
+    CategoriesScreen(
+      onNavigateTab: _selectTab,
+      selectedCategoryId: _requestedCategoryId,
+    ),
     CartScreen(onNavigateTab: _selectTab),
     OrderListScreen(),
     ProfileScreen(onNavigateTab: _selectTab),
   ];
 
   void _selectTab(int index) => setState(() => _selectedIndex = index);
+
+  void _openCategory(String categoryId) {
+    setState(() {
+      _requestedCategoryId = categoryId;
+      _selectedIndex = 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +108,9 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
               ),
               backgroundColor: AppColors.orange,
               foregroundColor: Colors.white,
+              shape: const CircleBorder(
+                side: BorderSide(color: Colors.white, width: 2),
+              ),
               child: const Icon(Icons.smart_toy_rounded, size: 25),
             ),
       bottomNavigationBar: MainBottomNavigationBar(

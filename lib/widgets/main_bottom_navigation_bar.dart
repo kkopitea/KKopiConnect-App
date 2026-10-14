@@ -68,12 +68,17 @@ class _NavigationItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          child: Padding(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
             padding: const EdgeInsets.symmetric(vertical: 5),
+            decoration: BoxDecoration(
+              gradient: selected ? AppColors.orangeGradient : null,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: color, size: 22),
+                Icon(icon, color: selected ? Colors.white : color, size: 22),
                 const SizedBox(height: 3),
                 Text(
                   label,
@@ -81,7 +86,7 @@ class _NavigationItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    color: color,
+                    color: selected ? Colors.white : color,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

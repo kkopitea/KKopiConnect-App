@@ -202,13 +202,13 @@ class MenuAssistantKnowledge {
     if (normalizedProduct.isNotEmpty) {
       final product = normalizedProduct.first;
       if (_containsAny(text, ['price', 'how much', 'cost'])) {
-        return '${product.name} is P${product.price}.';
+        return '${product.name} is ₱${product.price}.';
       }
       final details = <String>[
         product.description,
-        'Price: P${product.price}',
+        'Price: ₱${product.price}',
         if (product.sizes.isNotEmpty)
-          'Sizes: ${product.sizes.map((size) => '${size.$1} (+P${size.$2})').join(', ')}',
+          'Sizes: ${product.sizes.map((size) => '${size.$1} (+₱${size.$2})').join(', ')}',
         if (product.sugarLevels.isNotEmpty)
           'Sugar levels: ${product.sugarLevels.join(', ')}',
       ];
@@ -230,7 +230,7 @@ class MenuAssistantKnowledge {
           .toList();
       if (matches.length == 1) {
         final product = matches.first;
-        return '${product.name} is P${product.price}.';
+        return '${product.name} is ₱${product.price}.';
       }
       if (matches.length > 1) {
         return 'Which drink do you mean? ${_formatProducts(matches)}.';
@@ -244,7 +244,7 @@ class MenuAssistantKnowledge {
   }
 
   static String _formatProducts(List<MenuProduct> products) => products
-      .map((product) => '${product.name} (P${product.price})')
+      .map((product) => '${product.name} (₱${product.price})')
       .join(', ');
 
   static bool _containsAny(String text, List<String> phrases) =>

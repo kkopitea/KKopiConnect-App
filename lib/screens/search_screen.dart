@@ -72,83 +72,99 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Container(
-              color: AppColors.orange,
-              padding: const EdgeInsets.fromLTRB(12, 4, 16, 16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        tooltip: 'Back',
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Search',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: AppColors.orangeGradient,
+                ),
+                padding: const EdgeInsets.fromLTRB(12, 4, 16, 16),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          tooltip: 'Back',
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
                             color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Search',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: _submitSearch,
+                        decoration: InputDecoration(
+                          hintText: 'Search drinks, categories...',
+                          hintStyle: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF888888),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 22,
+                          ),
+                          suffixIcon: _searchController.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear search',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 20,
+                                  ),
+                                ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 11,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                  Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      textInputAction: TextInputAction.search,
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: _submitSearch,
-                      decoration: InputDecoration(
-                        hintText: 'Search drinks, categories...',
-                        hintStyle: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF888888),
-                        ),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 22),
-                        suffixIcon: _searchController.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear search',
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {});
-                                },
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                              ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            Expanded(
+            Positioned.fill(
+              top: 112,
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
                 ),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
                   children: [
                     if (_searchController.text.isNotEmpty) ...[
                       _SectionHeading(
@@ -312,7 +328,13 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           );
                         }
-                        final terms = snapshot.data ?? const <String>[];
+                        final terms = SearchAnalyticsRepository
+                            .matchingProductNames(
+                              searchTerms: snapshot.data ?? const <String>[],
+                              productNames: menuProducts.map(
+                                (product) => product.name,
+                              ),
+                            );
                         if (terms.isEmpty) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 10),
@@ -367,7 +389,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _submitSearch(String value) {
+  void _submitSearch(String value, {String? popularProductName}) {
     final term = value.trim();
     if (term.isEmpty) return;
     setState(() {
@@ -376,7 +398,14 @@ class _SearchScreenState extends State<SearchScreen> {
       if (_recentSearches.length > 8) _recentSearches.removeLast();
     });
     unawaited(_saveRecentSearches());
-    unawaited(_recordPopularSearch(term));
+    final exactProduct = menuProducts.where(
+      (product) => product.name.toLowerCase() == term.toLowerCase(),
+    );
+    final canonicalName = popularProductName ??
+        (exactProduct.isEmpty ? null : exactProduct.first.name);
+    if (canonicalName != null) {
+      unawaited(_recordPopularSearch(canonicalName));
+    }
   }
 
   Future<void> _loadRecentSearches() async {
@@ -424,9 +453,9 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> _recordPopularSearch(String term) async {
+  Future<void> _recordPopularSearch(String productName) async {
     try {
-      await SearchAnalyticsRepository().recordSearch(term);
+      await SearchAnalyticsRepository().recordSearch(productName);
     } catch (error) {
       debugPrint('Unable to record popular search: $error');
       if (!mounted) return;
@@ -442,7 +471,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _openProduct(MenuProduct product) {
-    _submitSearch(_searchController.text);
+    _submitSearch(_searchController.text, popularProductName: product.name);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ProductDetailScreen(
@@ -562,7 +591,7 @@ class _SearchProductRow extends StatelessWidget {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          'P${product.price} · ${product.description}',
+          '${AppColors.pesoSymbol}${product.price} · ${product.description}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12, height: 1.3),
