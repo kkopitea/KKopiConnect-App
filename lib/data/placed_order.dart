@@ -23,10 +23,10 @@ class PlacedOrder {
 
   int get total => items.fold<int>(0, (amount, item) => amount + item.total);
 
-  String get formattedId => '#$id';
+  String get formattedId => id.startsWith('#') ? id : '#$id';
 
-  PlacedOrder copyWith({String? status}) => PlacedOrder(
-    id: id,
+  PlacedOrder copyWith({String? id, String? status}) => PlacedOrder(
+    id: id ?? this.id,
     items: items,
     fulfillment: fulfillment,
     paymentMethod: paymentMethod,

@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_colors.dart';
+import '../services/guest_name_prompt.dart';
 import 'login_screen_redesign.dart';
 import 'main_interface_screen.dart';
+import 'welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -56,18 +59,43 @@ class _SplashScreenState extends State<SplashScreen>
 
     Widget destination = const LoginScreen();
     try {
-      if (FirebaseAuth.instance.currentUser != null) {
-        destination = const MainInterfaceScreen();
+      final preferences = await SharedPreferences.getInstance();
+      final hasSeenWelcome =
+          preferences.getBool('hasSeenWelcomeSlides') ?? false;
+      if (!mounted) return;
+      if (!hasSeenWelcome) {
+        destination = const WelcomeScreen();
+      } else {
+        final auth = FirebaseAuth.instance;
+        final user = auth.currentUser;
+        if (user != null) {
+          if (user.isAnonymous &&
+              (user.displayName?.trim().isNotEmpty != true)) {
+            final name = await showGuestNamePrompt(context);
+            if (!mounted) return;
+            if (name == null) {
+              await auth.signOut();
+            } else {
+              await user.updateDisplayName(name);
+              destination = const MainInterfaceScreen();
+            }
+          } else {
+            destination = const MainInterfaceScreen();
+          }
+        }
       }
-    } on FirebaseException {
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint(
+        'Unable to restore the signed-in session: $error\n$stackTrace',
+      );
       destination = const LoginScreen();
     }
 
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            destination,
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
 
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

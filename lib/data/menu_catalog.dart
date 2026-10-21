@@ -73,6 +73,35 @@ class MenuProduct {
   final List<(String, int)> sizes;
   final List<String> sugarLevels;
 
+  List<(String, int)> get availableSizes {
+    int? explicitPriceFor(int ounces) {
+      final matchingSize = sizes.where(
+        (size) => RegExp(
+          '(?<!\\d)$ounces\\s*(?:oz|ounces?)\\b',
+          caseSensitive: false,
+        ).hasMatch(size.$1),
+      );
+      return matchingSize.firstOrNull?.$2;
+    }
+
+    final hasExplicitOunceSizes = sizes.any(
+      (size) => RegExp(
+        r'(?<!\d)(16|22)\s*(?:oz|ounces?)\b',
+        caseSensitive: false,
+      ).hasMatch(size.$1),
+    );
+    if (hasExplicitOunceSizes) {
+      return [
+        ('16oz', explicitPriceFor(16) ?? 0),
+        ('22oz', explicitPriceFor(22) ?? 0),
+      ];
+    }
+    if (sizes.length > 1) {
+      return [('16oz', sizes[0].$2), ('22oz', sizes[1].$2)];
+    }
+    return [('16oz', 0), ('22oz', sizes.firstOrNull?.$2 ?? 0)];
+  }
+
   static MenuProduct? fromFirestore(String id, Map<String, dynamic> data) {
     final name = data['name'];
     final rawPrice = data['price'] ?? data['basePrice'];

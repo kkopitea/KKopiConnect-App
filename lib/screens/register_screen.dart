@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import 'terms_conditions_screen.dart';
@@ -32,6 +33,10 @@ class _RegisterScreenState extends State<RegisterScreen>
   @override
   void initState() {
     super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser?.isAnonymous ?? false) {
+      _nameController.text = currentUser?.displayName ?? '';
+    }
     _cardController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -65,22 +70,33 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     setState(() => _isLoading = true);
     try {
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
-      await credential.user?.updateDisplayName(_nameController.text.trim());
-      final user = credential.user;
+      final auth = FirebaseAuth.instance;
+      final currentUser = auth.currentUser;
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final name = _nameController.text.trim();
+      final isGuestUpgrade =
+          currentUser?.isAnonymous == true || currentUser?.email == email;
+      final user = currentUser?.isAnonymous == true
+          ? (await currentUser!.linkWithCredential(
+              EmailAuthProvider.credential(email: email, password: password),
+            )).user
+          : currentUser?.email == email
+          ? currentUser
+          : (await auth.createUserWithEmailAndPassword(
+              email: email,
+              password: password,
+            )).user;
+      await user?.updateDisplayName(name);
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'email': _emailController.text.trim(),
+          'email': email,
           'isActive': true,
-          'name': _nameController.text.trim(),
+          'name': name,
           'phone': _phoneController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+          if (!isGuestUpgrade) 'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
@@ -92,6 +108,8 @@ class _RegisterScreenState extends State<RegisterScreen>
       if (!mounted) return;
       final message = switch (error.code) {
         'email-already-in-use' => 'An account already exists for this email.',
+        'credential-already-in-use' =>
+          'This email is already linked to another account. Log in to that account instead.',
         'invalid-email' => 'Please enter a valid email address.',
         'weak-password' => 'Please choose a stronger password.',
         _ => 'Unable to create your account.',
@@ -99,6 +117,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (error, stackTrace) {
+      debugPrint('Unable to finish account registration: $error\n$stackTrace');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to finish registration. Please try again.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -123,60 +149,80 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final heroHeight = (constraints.maxHeight * 0.45).clamp(
-              320.0,
-              390.0,
-            );
-            return SizedBox(
-              height: heroHeight + 520,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _HeroHeader(
-                    width: constraints.maxWidth,
-                    height: heroHeight,
-                    slideAnimation:
-                        _imageSlideAnimation ??
-                        const AlwaysStoppedAnimation<Offset>(Offset.zero),
-                  ),
-                  Positioned(
-                    top: heroHeight - 120,
-                    left: 0,
-                    right: 0,
-                    child: SlideTransition(
-                      position: _cardSlideAnimation,
-                      child: _RegisterCard(
-                        formKey: _formKey,
-                        nameController: _nameController,
-                        emailController: _emailController,
-                        phoneController: _phoneController,
-                        passwordController: _passwordController,
-                        obscurePassword: _obscurePassword,
-                        acceptedTerms: _acceptedTerms,
-                        isLoading: _isLoading,
-                        fadeAnimation:
-                            _cardFadeAnimation ??
-                            const AlwaysStoppedAnimation<double>(1),
-                        onBack: _handleBack,
-                        onTogglePassword: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.white,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: ColoredBox(color: Colors.white)),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final heroHeight = (constraints.maxHeight * 0.45).clamp(
+                    320.0,
+                    390.0,
+                  );
+                  return SizedBox(
+                    height: heroHeight + 520,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _HeroHeader(
+                          width: constraints.maxWidth,
+                          height: heroHeight,
+                          slideAnimation:
+                              _imageSlideAnimation ??
+                              const AlwaysStoppedAnimation<Offset>(Offset.zero),
                         ),
-                        onAcceptedTermsChanged: (value) =>
-                            setState(() => _acceptedTerms = value),
-                        onRegister: _register,
-                      ),
+                        Positioned(
+                          top: heroHeight - 120,
+                          left: 0,
+                          right: 0,
+                          child: SlideTransition(
+                            position: _cardSlideAnimation,
+                            child: _RegisterCard(
+                              formKey: _formKey,
+                              nameController: _nameController,
+                              emailController: _emailController,
+                              phoneController: _phoneController,
+                              passwordController: _passwordController,
+                              obscurePassword: _obscurePassword,
+                              acceptedTerms: _acceptedTerms,
+                              isLoading: _isLoading,
+                              fadeAnimation:
+                                  _cardFadeAnimation ??
+                                  const AlwaysStoppedAnimation<double>(1),
+                              onBack: _handleBack,
+                              onTogglePassword: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                              onAcceptedTermsChanged: (value) =>
+                                  setState(() => _acceptedTerms = value),
+                              onRegister: _register,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: MediaQuery.viewPaddingOf(context).bottom,
+              child: const ColoredBox(color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
@@ -198,13 +244,7 @@ class _HeroHeader extends StatelessWidget {
     return Container(
       height: height,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.orange, AppColors.orangeLight],
-        ),
-      ),
+      decoration: const BoxDecoration(gradient: AppColors.orangeGradient),
       child: Stack(
         clipBehavior: Clip.none,
         children: [

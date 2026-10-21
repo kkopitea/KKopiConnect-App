@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/search_analytics_repository.dart';
+import '../widgets/category_icon_circle.dart';
 import '../widgets/cloudinary_image.dart';
 import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
@@ -159,9 +160,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(30),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
@@ -328,8 +327,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           );
                         }
-                        final terms = SearchAnalyticsRepository
-                            .matchingProductNames(
+                        final terms =
+                            SearchAnalyticsRepository.matchingProductNames(
                               searchTerms: snapshot.data ?? const <String>[],
                               productNames: menuProducts.map(
                                 (product) => product.name,
@@ -401,7 +400,8 @@ class _SearchScreenState extends State<SearchScreen> {
     final exactProduct = menuProducts.where(
       (product) => product.name.toLowerCase() == term.toLowerCase(),
     );
-    final canonicalName = popularProductName ??
+    final canonicalName =
+        popularProductName ??
         (exactProduct.isEmpty ? null : exactProduct.first.name);
     if (canonicalName != null) {
       unawaited(_recordPopularSearch(canonicalName));
@@ -536,19 +536,7 @@ class _SearchCategoryTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(36),
         child: Column(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFE2BD),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                category.displayIcon,
-                size: 27,
-                color: Colors.black87,
-              ),
-            ),
+            CategoryIconCircle(icon: category.displayIcon, size: 56),
             const SizedBox(height: 4),
             Text(
               label,

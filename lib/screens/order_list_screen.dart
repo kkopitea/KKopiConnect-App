@@ -9,21 +9,53 @@ import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
 import 'categories_screen.dart';
 
-class OrderListScreen extends StatelessWidget {
-  const OrderListScreen({super.key});
+class OrderListScreen extends StatefulWidget {
+  const OrderListScreen({super.key, this.userId, this.orderRepository});
+
+  final String? userId;
+  final OrderRepository? orderRepository;
+
+  @override
+  State<OrderListScreen> createState() => _OrderListScreenState();
+}
+
+class _OrderListScreenState extends State<OrderListScreen> {
+  final Set<String> _selectedOrderIds = {};
+  bool _isSelectingOrders = false;
+  bool _isDeletingOrders = false;
+  late String? _activeUserId;
+  late Stream<List<PlacedOrder>> _ordersStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateOrdersStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant OrderListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId ||
+        oldWidget.orderRepository != widget.orderRepository) {
+      _updateOrdersStream();
+    }
+  }
+
+  void _updateOrdersStream() {
+    _activeUserId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
+    _ordersStream = _activeUserId == null
+        ? Stream<List<PlacedOrder>>.empty()
+        : (widget.orderRepository ?? FirestoreOrderRepository()).watchOrders(
+            _activeUserId!,
+          );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    final ordersStream = user == null
-        ? Stream<List<PlacedOrder>>.empty()
-        : FirestoreOrderRepository().watchOrders(user.uid);
-
     return CurvedContentPage(
       title: 'MY ORDERS',
       body: StreamBuilder<List<PlacedOrder>>(
-        stream: ordersStream,
+        stream: _ordersStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -37,7 +69,7 @@ class OrderListScreen extends StatelessWidget {
 
           final orders = snapshot.data ?? const <PlacedOrder>[];
 
-          if (user == null) {
+          if (_activeUserId == null) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -112,30 +144,209 @@ class OrderListScreen extends StatelessWidget {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(14),
-            itemCount: orders.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => _OrderCard(
-              order: orders[index],
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => OrderDetailsScreen(order: orders[index]),
+          final orderIds = orders.map((order) => order.id).toSet();
+          final deletableOrderIds = orders
+              .where(_isDeletableOrder)
+              .map((order) => order.id)
+              .toSet();
+          _selectedOrderIds.removeWhere(
+            (id) => !orderIds.contains(id) || !deletableOrderIds.contains(id),
+          );
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Order history',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (_isSelectingOrders) ...[
+                      TextButton(
+                        onPressed: _isDeletingOrders
+                            ? null
+                            : () => setState(() {
+                                _selectedOrderIds.clear();
+                                _isSelectingOrders = false;
+                              }),
+                        child: const Text('Done'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed:
+                            _selectedOrderIds.isEmpty || _isDeletingOrders
+                            ? null
+                            : () => _confirmDeleteOrders(
+                                _activeUserId!,
+                                _selectedOrderIds.toList(),
+                              ),
+                        icon: _isDeletingOrders
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.delete_outline_rounded),
+                        label: Text('Delete (${_selectedOrderIds.length})'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFC62828),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ] else
+                      TextButton.icon(
+                        onPressed: () => setState(() {
+                          _isSelectingOrders = true;
+                        }),
+                        icon: const Icon(Icons.checklist_rounded),
+                        label: const Text('Select'),
+                      ),
+                  ],
                 ),
               ),
-            ),
+              if (_isSelectingOrders)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(14, 4, 14, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Only completed or cancelled orders can be deleted.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: orders.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) => _OrderCard(
+                    order: orders[index],
+                    isSelecting: _isSelectingOrders,
+                    isSelected: _selectedOrderIds.contains(orders[index].id),
+                    onTap: () {
+                      if (_isSelectingOrders) {
+                        if (!_isDeletableOrder(orders[index])) return;
+                        setState(() {
+                          final orderId = orders[index].id;
+                          if (!_selectedOrderIds.add(orderId)) {
+                            _selectedOrderIds.remove(orderId);
+                          }
+                        });
+                      } else {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                OrderDetailsScreen(order: orders[index]),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
+
+  bool _isDeletableOrder(PlacedOrder order) {
+    final status = order.status.toLowerCase();
+    return status == 'completed' || status == 'cancelled';
+  }
+
+  Future<void> _confirmDeleteOrders(
+    String userId,
+    List<String> orderIds,
+  ) async {
+    final shouldHide = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          orderIds.length == 1
+              ? 'Delete this order?'
+              : 'Delete selected orders?',
+        ),
+        content: Text(
+          orderIds.length == 1
+              ? 'This permanently deletes the order from your history and the store records.'
+              : 'This permanently deletes these ${orderIds.length} orders from your history and the store records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep orders'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldHide != true || !mounted) return;
+
+    setState(() => _isDeletingOrders = true);
+    try {
+      await (widget.orderRepository ?? FirestoreOrderRepository()).deleteOrders(
+        userId: userId,
+        orderIds: orderIds,
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedOrderIds.clear();
+        _isSelectingOrders = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            orderIds.length == 1
+                ? 'Order permanently deleted.'
+                : '${orderIds.length} orders permanently deleted.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to delete selected orders: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeletingOrders = false);
+    }
+  }
 }
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, required this.onTap});
+  const _OrderCard({
+    required this.order,
+    required this.onTap,
+    required this.isSelecting,
+    required this.isSelected,
+  });
 
   final PlacedOrder order;
   final VoidCallback onTap;
+  final bool isSelecting;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -153,10 +364,27 @@ class _OrderCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        splashColor: AppColors.orangeTint,
+        highlightColor: AppColors.orangeTint,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
+              if (isSelecting) ...[
+                Icon(
+                  !_isDeletable
+                      ? Icons.block_rounded
+                      : isSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: !_isDeletable
+                      ? AppColors.inputBorder
+                      : isSelected
+                      ? AppColors.orange
+                      : AppColors.iconMuted,
+                ),
+                const SizedBox(width: 10),
+              ],
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: firstProduct == null
@@ -226,6 +454,11 @@ class _OrderCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  bool get _isDeletable {
+    final normalizedStatus = order.status.toLowerCase();
+    return normalizedStatus == 'completed' || normalizedStatus == 'cancelled';
   }
 }
 

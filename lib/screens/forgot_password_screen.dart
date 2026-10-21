@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 
@@ -10,7 +11,8 @@ class ForgotPasswordScreen extends StatefulWidget {
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with SingleTickerProviderStateMixin {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
@@ -23,10 +25,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
   @override
   void initState() {
     super.initState();
-    _cardController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    final cardCurve = CurvedAnimation(parent: _cardController, curve: Curves.easeInOutCubic);
-    _cardSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.23), end: Offset.zero).animate(cardCurve);
-    _imageSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.24), end: Offset.zero).animate(cardCurve);
+    _cardController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    final cardCurve = CurvedAnimation(
+      parent: _cardController,
+      curve: Curves.easeInOutCubic,
+    );
+    _cardSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.23),
+      end: Offset.zero,
+    ).animate(cardCurve);
+    _imageSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.24),
+      end: Offset.zero,
+    ).animate(cardCurve);
     _cardFadeAnimation = Tween<double>(begin: 0, end: 1).animate(cardCurve);
     _cardController.forward();
   }
@@ -40,16 +54,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
         email: _emailController.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification email sent.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Verification email sent.')));
       await _handleBack();
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final message = error.code == 'user-not-found'
           ? 'No account was found for this email.'
           : 'Unable to send the verification email.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -71,48 +87,82 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final heroHeight = (constraints.maxHeight * 0.45).clamp(320.0, 390.0);
-            return SizedBox(
-              height: heroHeight + 520,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _HeroHeader(width: constraints.maxWidth, height: heroHeight, slideAnimation: _imageSlideAnimation ?? const AlwaysStoppedAnimation<Offset>(Offset.zero)),
-                  Positioned(
-                    top: heroHeight - 120,
-                    left: 0,
-                    right: 0,
-                    child: SlideTransition(
-                      position: _cardSlideAnimation,
-                      child: _ForgotPasswordCard(
-                        formKey: _formKey,
-                        emailController: _emailController,
-                        isLoading: _isLoading,
-                        fadeAnimation: _cardFadeAnimation ?? const AlwaysStoppedAnimation<double>(1),
-                        onBack: _handleBack,
-                        onSend: _sendResetEmail,
-                      ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.white,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: ColoredBox(color: Colors.white)),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final heroHeight = (constraints.maxHeight * 0.45).clamp(
+                    320.0,
+                    390.0,
+                  );
+                  return SizedBox(
+                    height: heroHeight + 520,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _HeroHeader(
+                          width: constraints.maxWidth,
+                          height: heroHeight,
+                          slideAnimation:
+                              _imageSlideAnimation ??
+                              const AlwaysStoppedAnimation<Offset>(Offset.zero),
+                        ),
+                        Positioned(
+                          top: heroHeight - 120,
+                          left: 0,
+                          right: 0,
+                          child: SlideTransition(
+                            position: _cardSlideAnimation,
+                            child: _ForgotPasswordCard(
+                              formKey: _formKey,
+                              emailController: _emailController,
+                              isLoading: _isLoading,
+                              fadeAnimation:
+                                  _cardFadeAnimation ??
+                                  const AlwaysStoppedAnimation<double>(1),
+                              onBack: _handleBack,
+                              onSend: _sendResetEmail,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: MediaQuery.viewPaddingOf(context).bottom,
+              child: const ColoredBox(color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
   }
-
 }
 
 class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({required this.width, required this.height, required this.slideAnimation});
+  const _HeroHeader({
+    required this.width,
+    required this.height,
+    required this.slideAnimation,
+  });
   final double width;
   final double height;
   final Animation<Offset> slideAnimation;
@@ -122,9 +172,7 @@ class _HeroHeader extends StatelessWidget {
     return Container(
       height: height,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.orange, AppColors.orangeLight]),
-      ),
+      decoration: const BoxDecoration(gradient: AppColors.orangeGradient),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -136,7 +184,15 @@ class _HeroHeader extends StatelessWidget {
               children: [
                 const _BrandLogo(),
                 const SizedBox(height: 2),
-                Text('COFFEE • MILKTEA • GOOD VIBES', style: TextStyle(color: Colors.black, fontSize: width < 340 ? 8 : 10, fontWeight: FontWeight.w600, letterSpacing: 0.7)),
+                Text(
+                  'COFFEE • MILKTEA • GOOD VIBES',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: width < 340 ? 8 : 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.7,
+                  ),
+                ),
               ],
             ),
           ),
@@ -146,7 +202,12 @@ class _HeroHeader extends StatelessWidget {
             bottom: 20,
             child: SlideTransition(
               position: slideAnimation,
-              child: Image.asset('assets/images/login_drinks.png', height: height * 0.72, fit: BoxFit.contain, semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks'),
+              child: Image.asset(
+                'assets/images/login_drinks.png',
+                height: height * 0.72,
+                fit: BoxFit.contain,
+                semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks',
+              ),
             ),
           ),
         ],
@@ -162,10 +223,21 @@ class _BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: const TextSpan(
-        style: TextStyle(fontSize: 42, height: 0.95, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+        style: TextStyle(
+          fontSize: 42,
+          height: 0.95,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.5,
+        ),
         children: [
-          TextSpan(text: 'KKOPI', style: TextStyle(color: Colors.white)),
-          TextSpan(text: '.TEA', style: TextStyle(color: Colors.black)),
+          TextSpan(
+            text: 'KKOPI',
+            style: TextStyle(color: Colors.white),
+          ),
+          TextSpan(
+            text: '.TEA',
+            style: TextStyle(color: Colors.black),
+          ),
         ],
       ),
     );
@@ -194,7 +266,10 @@ class _ForgotPasswordCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(42, 18, 42, 20),
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       child: Form(
         key: formKey,
         child: FadeTransition(
@@ -204,8 +279,21 @@ class _ForgotPasswordCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back, color: Colors.black), padding: EdgeInsets.zero),
-                  const Expanded(child: Text('Forgot password', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                  IconButton(
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    padding: EdgeInsets.zero,
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Forgot password',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 48),
                 ],
               ),
@@ -213,10 +301,17 @@ class _ForgotPasswordCard extends StatelessWidget {
               TextFormField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: _inputDecoration('Email Address', Icons.email_outlined),
+                decoration: _inputDecoration(
+                  'Email Address',
+                  Icons.email_outlined,
+                ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Please enter your email address';
-                  if (!value.contains('@')) return 'Please enter a valid email';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your email address';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
                   return null;
                 },
               ),
@@ -224,11 +319,21 @@ class _ForgotPasswordCard extends StatelessWidget {
               const Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: 'NOTE: ', style: TextStyle(fontWeight: FontWeight.w800)),
-                    TextSpan(text: 'The verification code will send through your email address. If you did not receive one just send another verification code. The code will only applicable within 3 minutes.'),
+                    TextSpan(
+                      text: 'NOTE: ',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(
+                      text:
+                          'The verification code will send through your email address. If you did not receive one just send another verification code. The code will only applicable within 3 minutes.',
+                    ),
                   ],
                 ),
-                style: TextStyle(color: Color(0xFF666666), fontSize: 12, height: 1.5),
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 12,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 28),
               Align(
@@ -238,7 +343,19 @@ class _ForgotPasswordCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: isLoading ? null : onSend,
                     style: _buttonStyle(),
-                    child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('SEND', style: TextStyle(fontWeight: FontWeight.w800)),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'SEND',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                   ),
                 ),
               ),
@@ -246,7 +363,11 @@ class _ForgotPasswordCard extends StatelessWidget {
               const Text(
                 '© 2026 Kkopitea. All rights reserved.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF999999), fontSize: 8, height: 2),
+                style: TextStyle(
+                  color: Color(0xFF999999),
+                  fontSize: 8,
+                  height: 2,
+                ),
               ),
             ],
           ),
@@ -263,11 +384,22 @@ InputDecoration _inputDecoration(String hint, IconData icon) {
     prefixIcon: Icon(icon, color: const Color(0xFF888888), size: 22),
     filled: true,
     fillColor: const Color(0xFFF7F7F7),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD8D8D8))),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD8D8D8))),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFD8D8D8)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFD8D8D8)),
+    ),
   );
 }
 
 ButtonStyle _buttonStyle() {
-  return ElevatedButton.styleFrom(backgroundColor: AppColors.orange, foregroundColor: Colors.white, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)));
+  return ElevatedButton.styleFrom(
+    backgroundColor: AppColors.orange,
+    foregroundColor: Colors.white,
+    elevation: 3,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+  );
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
-import '../data/drink_extra.dart';
-import '../data/drink_extra_repository.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
@@ -30,12 +28,6 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   late String size;
   late int sizePrice;
   String sugar = '50%';
-  final Set<String> addIns = {};
-  final Set<String> addOns = {};
-  final Map<String, int> _addInUnitPrices = {};
-  final Map<String, int> _addOnUnitPrices = {};
-  late final Stream<List<DrinkExtra>> _addInsStream;
-  late final Stream<List<DrinkExtra>> _addOnsStream;
   static const _sugarOptions = [
     ('0%', 'No sugar'),
     ('25%', 'Less'),
@@ -46,75 +38,25 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   @override
   void initState() {
     super.initState();
-    try {
-      final repository = DrinkExtraRepository();
-      _addInsStream = repository.watchAddIns();
-      _addOnsStream = repository.watchAddOns();
-    } catch (error, stackTrace) {
-      debugPrint('Unable to connect to drink options: $error');
-      _addInsStream = Stream<List<DrinkExtra>>.error(error, stackTrace);
-      _addOnsStream = Stream<List<DrinkExtra>>.error(error, stackTrace);
-    }
     quantity = widget.draft.quantity;
     size = widget.draft.size;
     sizePrice = widget.draft.unitPrice;
     sugar = widget.draft.sugar;
-    addIns
-      ..clear()
-      ..addAll(widget.draft.addIns);
-    addOns
-      ..clear()
-      ..addAll(widget.draft.addOns);
-    _addInUnitPrices.addAll(widget.draft.addInUnitPrices);
-    _addOnUnitPrices.addAll(widget.draft.addOnUnitPrices);
-  }
-
-  OrderDraft _draftForOptions(
-    List<DrinkExtra> addInOptions,
-    List<DrinkExtra> addOnOptions,
-  ) {
-    final addInPrices = Map<String, int>.of(_addInUnitPrices);
-    final addOnPrices = Map<String, int>.of(_addOnUnitPrices);
-    for (final option in addInOptions) {
-      if (addIns.contains(option.name)) addInPrices[option.name] = option.price;
-    }
-    for (final option in addOnOptions) {
-      if (addOns.contains(option.name)) addOnPrices[option.name] = option.price;
-    }
-    return OrderDraft(
-      product: widget.draft.product,
-      quantity: quantity,
-      size: size,
-      sizePrice: sizePrice,
-      sugar: sugar,
-      addIns: Set.unmodifiable(addIns),
-      addOns: Set.unmodifiable(addOns),
-      addInUnitPrices: Map.unmodifiable(addInPrices),
-      addOnUnitPrices: Map.unmodifiable(addOnPrices),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.draft.product;
-    return StreamBuilder<List<DrinkExtra>>(
-      stream: _addInsStream,
-      builder: (context, addInSnapshot) => StreamBuilder<List<DrinkExtra>>(
-        stream: _addOnsStream,
-        builder: (context, addOnSnapshot) =>
-            _buildPage(product, addInSnapshot, addOnSnapshot),
-      ),
-    );
+    return _buildPage(widget.draft.product);
   }
 
-  Widget _buildPage(
-    MenuProduct product,
-    AsyncSnapshot<List<DrinkExtra>> addInSnapshot,
-    AsyncSnapshot<List<DrinkExtra>> addOnSnapshot,
-  ) {
-    final addInOptions = addInSnapshot.data ?? const <DrinkExtra>[];
-    final addOnOptions = addOnSnapshot.data ?? const <DrinkExtra>[];
-    final currentDraft = _draftForOptions(addInOptions, addOnOptions);
+  Widget _buildPage(MenuProduct product) {
+    final currentDraft = OrderDraft(
+      product: product,
+      quantity: quantity,
+      size: size,
+      sizePrice: sizePrice,
+      sugar: sugar,
+    );
     final total = currentDraft.total;
     return CurvedContentPage(
       title: 'Customize your drink',
@@ -133,13 +75,10 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
           color: Colors.white,
           onPressed: () => setState(() {
             quantity = 1;
-            size = product.sizes.isEmpty ? 'Regular' : product.sizes.first.$1;
-            sizePrice = product.sizes.isEmpty
-                ? product.price
-                : product.price + product.sizes.first.$2;
+            final firstSize = product.availableSizes.first;
+            size = firstSize.$1;
+            sizePrice = product.price + firstSize.$2;
             sugar = '50%';
-            addIns.clear();
-            addOns.clear();
           }),
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -166,96 +105,6 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                   options: _sugarOptionsFor(product),
                   selected: sugar,
                   onSelect: (value) => setState(() => sugar = value),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: _panelDecoration,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '2. Add ins / your liking',
-                        style: _sectionTitle,
-                      ),
-                      const SizedBox(height: 10),
-                      if (addInSnapshot.hasError)
-                        const _OptionsError(label: 'add-ins')
-                      else if (addInSnapshot.connectionState ==
-                              ConnectionState.waiting &&
-                          !addInSnapshot.hasData)
-                        const _OptionsLoading()
-                      else if (addInOptions.isEmpty)
-                        const _OptionsEmpty()
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            for (final option in addInOptions)
-                              FilterChip(
-                                label: Text(
-                                  '${option.name} · ${AppColors.pesoSymbol}${option.price}',
-                                ),
-                                selected: addIns.contains(option.name),
-                                onSelected: (selected) => setState(() {
-                                  if (selected) {
-                                    addIns.add(option.name);
-                                    _addInUnitPrices[option.name] =
-                                        option.price;
-                                  } else {
-                                    addIns.remove(option.name);
-                                  }
-                                }),
-                                selectedColor: AppColors.orangeTint,
-                                checkmarkColor: AppColors.orange,
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: _panelDecoration,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('3. Add-ons', style: _sectionTitle),
-                      if (addOnSnapshot.hasError)
-                        const _OptionsError(label: 'add-ons')
-                      else if (addOnSnapshot.connectionState ==
-                              ConnectionState.waiting &&
-                          !addOnSnapshot.hasData)
-                        const _OptionsLoading()
-                      else if (addOnOptions.isEmpty)
-                        const _OptionsEmpty()
-                      else
-                        for (final option in addOnOptions)
-                          Material(
-                            color: Colors.transparent,
-                            child: CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              activeColor: AppColors.orange,
-                              title: Text(
-                                '${option.name} (${AppColors.pesoSymbol}${option.price})',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              value: addOns.contains(option.name),
-                              onChanged: (selected) => setState(() {
-                                if (selected == true) {
-                                  addOns.add(option.name);
-                                  _addOnUnitPrices[option.name] = option.price;
-                                } else {
-                                  addOns.remove(option.name);
-                                }
-                              }),
-                            ),
-                          ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -327,44 +176,6 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
     if (!product.sugarLevels.contains('50%')) options.insert(0, ('50%', '50%'));
     return options;
   }
-}
-
-class _OptionsLoading extends StatelessWidget {
-  const _OptionsLoading();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Text('Loading options...', style: TextStyle(fontSize: 12)),
-  );
-}
-
-class _OptionsEmpty extends StatelessWidget {
-  const _OptionsEmpty();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Text(
-      'No options available right now.',
-      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-    ),
-  );
-}
-
-class _OptionsError extends StatelessWidget {
-  const _OptionsError({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Text(
-      'Unable to load $label. Check your connection and Firestore access.',
-      style: const TextStyle(fontSize: 12, color: Colors.red),
-    ),
-  );
 }
 
 const _panelDecoration = BoxDecoration(

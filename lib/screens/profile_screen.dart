@@ -14,6 +14,7 @@ import 'favorites_screen.dart';
 import 'login_screen_redesign.dart';
 import 'notifications_screen.dart';
 import 'order_list_screen.dart';
+import 'register_screen.dart';
 import 'terms_conditions_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -33,10 +34,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isGuest = user?.isAnonymous ?? false;
     final displayName = _displayNameFor(user);
-    final email = user?.email ?? 'No email address';
+    final email = isGuest ? 'Guest account' : user?.email ?? 'No email address';
     final items = [
-      ('MY ORDERS', Icons.receipt_long_rounded),
+      ('My Orders', Icons.receipt_long_rounded),
       ('Payment Methods', Icons.wallet_rounded),
       ('Favorites', Icons.favorite_border_rounded),
       ('Notifications', Icons.notifications_none_rounded),
@@ -75,42 +77,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: const Color(0xFFE8E8E8)),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _AccountAvatar(
-                            photoUrl: photoUrl,
-                            imageBytes: _profilePhotoBytes,
-                            isUploading: _isUploadingPhoto,
-                            onTap: _pickProfilePhoto,
+                          Row(
+                            children: [
+                              _AccountAvatar(
+                                photoUrl: photoUrl,
+                                imageBytes: _profilePhotoBytes,
+                                isUploading: _isUploadingPhoto,
+                                onTap: isGuest
+                                    ? () =>
+                                          _showGuestRegistrationPrompt(context)
+                                    : _pickProfilePhoto,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name.isEmpty ? displayName : name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      email,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF666666),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name.isEmpty ? displayName : name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  email,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF666666),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                          if (isGuest) ...[
+                            const Divider(height: 24),
+                            const Text(
+                              'Register now to save your account and unlock profile features across your devices.',
+                              style: TextStyle(
+                                color: Color(0xFF555555),
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () => _openRegistration(context),
+                              icon: const Icon(Icons.person_add_alt_1_rounded),
+                              label: const Text('Register now'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.orange,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     );
@@ -118,26 +148,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 18),
                 for (final item in items) ...[
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 2,
-                    ),
-                    leading: Icon(item.$2, color: AppColors.orange),
-                    title: Text(
-                      item.$1,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
+                  Material(
+                    color: Colors.white,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
                       ),
+                      leading: Icon(item.$2, color: AppColors.orange),
+                      title: Text(
+                        item.$1,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                      ),
+                      subtitle: _subtitleFor(item.$1, isGuest),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF666666),
+                      ),
+                      onTap: () => _handleMenuTap(context, item.$1, isGuest),
                     ),
-                    subtitle: _subtitleFor(item.$1),
-                    trailing: const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF666666),
-                    ),
-                    onTap: () => _handleMenuTap(context, item.$1),
                   ),
                   const Divider(height: 1, color: Color(0xFFE9E9E9)),
                 ],
@@ -174,14 +207,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return 'Your account';
   }
 
-  Widget? _subtitleFor(String title) => switch (title) {
-    'Payment Methods' => Text(_paymentMethod),
-    _ => null,
-  };
+  Widget? _subtitleFor(String title, bool isGuest) {
+    if (isGuest &&
+        const {
+          'Payment Methods',
+          'Favorites',
+          'Notifications',
+        }.contains(title)) {
+      return const Text('Register to use this feature');
+    }
+    return switch (title) {
+      'Payment Methods' => Text(_paymentMethod),
+      _ => null,
+    };
+  }
 
-  Future<void> _handleMenuTap(BuildContext context, String title) async {
+  Future<void> _showGuestRegistrationPrompt(BuildContext context) async {
+    final shouldRegister = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Register to unlock this feature'),
+        content: const Text(
+          'Create an account to use profile features and keep your information available across devices. Your guest orders will stay with your account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Register now'),
+          ),
+        ],
+      ),
+    );
+    if (shouldRegister == true && context.mounted) {
+      await _openRegistration(context);
+    }
+  }
+
+  Future<void> _openRegistration(BuildContext context) async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const RegisterScreen()));
+  }
+
+  Future<void> _handleMenuTap(
+    BuildContext context,
+    String title,
+    bool isGuest,
+  ) async {
+    if (isGuest &&
+        const {
+          'Payment Methods',
+          'Favorites',
+          'Notifications',
+        }.contains(title)) {
+      await _showGuestRegistrationPrompt(context);
+      return;
+    }
     switch (title) {
-      case 'MY ORDERS':
+      case 'My Orders':
         if (widget.onNavigateTab != null) {
           widget.onNavigateTab!(3);
         } else {
@@ -321,9 +408,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     if (viewOrders == true && context.mounted) {
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const OrderListScreen()));
+      if (widget.onNavigateTab != null) {
+        widget.onNavigateTab!(3);
+      } else {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+        );
+      }
     }
   }
 

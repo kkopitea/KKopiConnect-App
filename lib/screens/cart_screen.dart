@@ -9,9 +9,10 @@ import 'categories_screen.dart';
 import 'order_type_screen.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key, this.onNavigateTab});
+  const CartScreen({super.key, this.onNavigateTab, this.checkoutBuilder});
 
   final ValueChanged<int>? onNavigateTab;
+  final Widget Function(List<OrderDraft> drafts)? checkoutBuilder;
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -43,7 +44,11 @@ class _CartScreenState extends State<CartScreen> {
     final matchedPreviousIndexes = <int>{};
     final updatedSelection = <int>{};
 
-    for (var currentIndex = 0; currentIndex < currentItems.length; currentIndex++) {
+    for (
+      var currentIndex = 0;
+      currentIndex < currentItems.length;
+      currentIndex++
+    ) {
       final item = currentItems[currentIndex];
       var previousIndex = -1;
       for (var index = 0; index < previousItems.length; index++) {
@@ -168,8 +173,8 @@ class _CartScreenState extends State<CartScreen> {
           return Column(
             children: [
               CheckboxListTile(
-                value: items.isNotEmpty &&
-                    _selectedIndexes.length == items.length,
+                value:
+                    items.isNotEmpty && _selectedIndexes.length == items.length,
                 tristate: true,
                 title: const Text(
                   'Select all for order',
@@ -253,13 +258,19 @@ class _CartScreenState extends State<CartScreen> {
                           onPressed: selectedItems.isEmpty
                               ? null
                               : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => OrderTypeScreen(
-                                drafts: List.unmodifiable(selectedItems),
-                                onNavigateTab: widget.onNavigateTab,
-                              ),
-                            ),
-                          ),
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        widget.checkoutBuilder?.call(
+                                          List.unmodifiable(selectedItems),
+                                        ) ??
+                                        OrderTypeScreen(
+                                          drafts: List.unmodifiable(
+                                            selectedItems,
+                                          ),
+                                          onNavigateTab: widget.onNavigateTab,
+                                        ),
+                                  ),
+                                ),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.orange,
                             foregroundColor: Colors.white,

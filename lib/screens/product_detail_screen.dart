@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
+import '../data/product_rating_repository.dart';
 import '../state/favorites_store.dart';
+import '../state/product_ratings_store.dart';
 import '../state/cart_store.dart';
 import '../widgets/cloudinary_image.dart';
+import '../widgets/product_rating_control.dart';
 import 'customize_drink_screen.dart';
 import 'cart_screen.dart';
 
@@ -26,20 +30,140 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
-  String _selectedSize = 'Regular';
+  String _selectedSize = '16oz';
   int _selectedPrice = 0;
+  Stream<ProductRatingSummary>? _ratingSummaryStream;
+  Stream<int?>? _userRatingStream;
+  bool _isSubmittingRating = false;
 
-  List<(String, int)> get _sizes => widget.product.sizes.isEmpty
-      ? [('Regular', widget.product.price)]
-      : widget.product.sizes
-          .map((size) => (size.$1, widget.product.price + size.$2))
-          .toList();
+  List<(String, int)> get _sizes => widget.product.availableSizes
+      .map((size) => (size.$1, widget.product.price + size.$2))
+      .toList();
 
   @override
   void initState() {
     super.initState();
     _selectedSize = _sizes.first.$1;
     _selectedPrice = _sizes.first.$2;
+    if (Firebase.apps.isNotEmpty) {
+      _watchProductRatings();
+      ProductRatingsStore.summaries.addListener(_ratingsChanged);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.product.id != widget.product.id && Firebase.apps.isNotEmpty) {
+      _watchProductRatings();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (Firebase.apps.isNotEmpty) {
+      ProductRatingsStore.summaries.removeListener(_ratingsChanged);
+    }
+    super.dispose();
+  }
+
+  void _watchProductRatings() {
+    _ratingSummaryStream = ProductRatingsStore.watchSummary(widget.product.id);
+    _userRatingStream = ProductRatingsStore.watchUserRating(widget.product.id);
+  }
+
+  void _ratingsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Widget _productRating() {
+    if (Firebase.apps.isEmpty) {
+      return ProductRatingControl(
+        summary: const ProductRatingSummary.empty(),
+        userRating: null,
+        onRate: _rateProduct,
+      );
+    }
+    return StreamBuilder<ProductRatingSummary>(
+      stream: _ratingSummaryStream,
+      builder: (context, summarySnapshot) {
+        if (summarySnapshot.hasError) {
+          return const Text(
+            'Ratings unavailable',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          );
+        }
+        if (summarySnapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+          );
+        }
+        return StreamBuilder<int?>(
+          stream: _userRatingStream,
+          builder: (context, userRatingSnapshot) {
+            if (userRatingSnapshot.hasError) {
+              return const Text(
+                'Your rating is unavailable',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              );
+            }
+            return ProductRatingControl(
+              summary:
+                  summarySnapshot.data ?? const ProductRatingSummary.empty(),
+              userRating: userRatingSnapshot.data,
+              isSubmitting: _isSubmittingRating,
+              onRate: _rateProduct,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _rateProduct(int rating) async {
+    if (_isSubmittingRating) return;
+    setState(() => _isSubmittingRating = true);
+    try {
+      if (Firebase.apps.isEmpty) {
+        throw StateError('Sign in to rate this product.');
+      }
+      await ProductRatingsStore.setRating(widget.product.id, rating);
+    } catch (error) {
+      debugPrint('Unable to rate product: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message.toString()
+                  : 'Could not save your rating. Please try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmittingRating = false);
+    }
+  }
+
+  Future<void> _toggleFavorite(String productId) async {
+    try {
+      await FavoritesStore.toggle(productId);
+    } catch (error) {
+      debugPrint('Unable to update product favorite: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message.toString()
+                : 'Could not update this favorite. Please try again.',
+          ),
+        ),
+      );
+    }
   }
 
   OrderDraft get _draft => OrderDraft(
@@ -52,6 +176,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final isBestSeller = Firebase.apps.isEmpty
+        ? product.isBestSeller
+        : ProductRatingsStore.isBestSeller(product.id, menuProducts);
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
@@ -103,8 +230,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               tooltip: isFavorite
                                   ? 'Remove favorite'
                                   : 'Add favorite',
-                              onPressed: () =>
-                                  FavoritesStore.toggle(product.id),
+                              onPressed: () => _toggleFavorite(product.id),
                               icon: Icon(
                                 isFavorite
                                     ? Icons.favorite
@@ -170,7 +296,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         ),
                                       ),
                                     ),
-                                    if (product.isBestSeller)
+                                    if (isBestSeller)
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 9,
@@ -203,30 +329,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star_rounded,
-                                      color: Color(0xFFFFA51D),
-                                      size: 19,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      '4.6',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      '(320)',
-                                      style: TextStyle(
-                                        color: AppColors.textMuted,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                _productRating(),
                               ],
                             ),
                           ),
@@ -373,24 +476,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: FilledButton(
                                     onPressed: () {
                                       CartStore.add(_draft);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                '${product.name} added to cart',
-                                              ),
-                                              action: SnackBarAction(
-                                                label: 'View cart',
-                                                onPressed: () =>
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute<void>(
-                                                        builder: (_) =>
-                                                            const CartScreen(),
-                                                      ),
-                                                    ),
-                                              ),
-                                            ),
-                                          );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${product.name} added to cart',
+                                          ),
+                                          action: SnackBarAction(
+                                            label: 'View cart',
+                                            onPressed: () =>
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(
+                                                    builder: (_) =>
+                                                        const CartScreen(),
+                                                  ),
+                                                ),
+                                          ),
+                                        ),
+                                      );
                                     },
                                     style: FilledButton.styleFrom(
                                       backgroundColor: AppColors.orange,

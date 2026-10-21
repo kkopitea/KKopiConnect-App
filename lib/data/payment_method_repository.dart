@@ -2,7 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'payment_method.dart';
 
-class PaymentMethodRepository {
+abstract interface class PaymentMethodSource {
+  Stream<List<PaymentMethod>> watchActive();
+
+  Future<void> save(PaymentMethod method);
+}
+
+class PaymentMethodRepository implements PaymentMethodSource {
   PaymentMethodRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
@@ -11,6 +17,7 @@ class PaymentMethodRepository {
   CollectionReference<Map<String, dynamic>> get _paymentMethods =>
       _firestore.collection('paymentMethods');
 
+  @override
   Stream<List<PaymentMethod>> watchActive() =>
       _paymentMethods.snapshots().map((snapshot) {
         if (snapshot.docs.isEmpty) return defaultPaymentMethods;
@@ -29,6 +36,7 @@ class PaymentMethodRepository {
         return List.unmodifiable(methods);
       });
 
+  @override
   Future<void> save(PaymentMethod method) async {
     if (method.id.trim().isEmpty || method.name.trim().isEmpty) {
       throw ArgumentError('Payment method id and name are required.');

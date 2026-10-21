@@ -19,6 +19,14 @@ class OrdersStore {
     );
   }
 
+  static void replaceOrder(String orderId, PlacedOrder replacement) {
+    orders.value = List.unmodifiable(
+      orders.value
+          .map((order) => order.id == orderId ? replacement : order)
+          .toList(),
+    );
+  }
+
   static PlacedOrder createOrder({
     required List<OrderDraft> items,
     required String fulfillment,

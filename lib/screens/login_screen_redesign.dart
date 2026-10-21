@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
+import '../services/guest_name_prompt.dart';
 import 'forgot_password_screen.dart';
 import 'main_interface_screen.dart';
 import 'register_screen.dart';
@@ -20,6 +22,61 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  Future<void> _continueAsGuest() async {
+    setState(() => _isLoading = true);
+    try {
+      final credential = await FirebaseAuth.instance.signInAnonymously();
+      final user = credential.user;
+      if (user == null) {
+        throw StateError('Firebase did not create a guest account.');
+      }
+      if (!mounted) return;
+      final customerName = await showGuestNamePrompt(context);
+      if (!mounted) return;
+      if (customerName == null) {
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
+      await user.updateDisplayName(customerName);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainInterfaceScreen()),
+      );
+    } on FirebaseAuthException catch (error, stackTrace) {
+      debugPrint(
+        'Guest sign-in failed (${error.code}): ${error.message}\n$stackTrace',
+      );
+      if (!mounted) return;
+      final message = switch (error.code) {
+        'operation-not-allowed' =>
+          'Guest access is disabled. Enable Anonymous sign-in in Firebase Authentication.',
+        'admin-restricted-operation' =>
+          'Guest account creation is blocked by Firebase settings. Allow account creation and enable Anonymous sign-in.',
+        'network-request-failed' =>
+          'Could not connect. Check your internet connection and try again.',
+        'app-not-authorized' || 'invalid-api-key' =>
+          'Guest sign-in is not configured for this app. Contact support.',
+        'too-many-requests' =>
+          'Too many guest sign-in attempts. Please try again later.',
+        _ => 'Guest sign-in failed (${error.code}). Please try again.',
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (error, stackTrace) {
+      debugPrint('Unable to start guest session: $error\n$stackTrace');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to continue as a guest. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -29,7 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainInterfaceScreen()));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainInterfaceScreen()),
+      );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       final message = switch (error.code) {
@@ -38,10 +98,16 @@ class _LoginScreenState extends State<LoginScreen> {
         'too-many-requests' => 'Too many attempts. Please try again later.',
         _ => 'Unable to login. Please try again.',
       };
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -56,55 +122,91 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final heroHeight = (constraints.maxHeight * 0.45).clamp(320.0, 390.0);
-            return SizedBox(
-              height: heroHeight + 470,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _HeroHeader(width: constraints.maxWidth, height: heroHeight),
-                  Positioned(
-                    top: heroHeight - 30,
-                    left: 0,
-                    right: 0,
-                    child: _LoginCard(
-                    formKey: _formKey,
-                    emailController: _emailController,
-                    passwordController: _passwordController,
-                    obscurePassword: _obscurePassword,
-                    isLoading: _isLoading,
-                    onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                    onLogin: _login,
-                    onForgotPassword: () => Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, animation, secondaryAnimation) => const ForgotPasswordScreen(),
-                        transitionsBuilder: (_, animation, secondaryAnimation, child) => child,
-                        transitionDuration: Duration.zero,
-                        reverseTransitionDuration: Duration.zero,
-                      ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.white,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final heroHeight = (constraints.maxHeight * 0.45).clamp(
+                    320.0,
+                    390.0,
+                  );
+                  return SizedBox(
+                    height: heroHeight + 470,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _HeroHeader(
+                          width: constraints.maxWidth,
+                          height: heroHeight,
+                        ),
+                        Positioned(
+                          top: heroHeight - 30,
+                          left: 0,
+                          right: 0,
+                          child: _LoginCard(
+                            formKey: _formKey,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            obscurePassword: _obscurePassword,
+                            isLoading: _isLoading,
+                            onTogglePassword: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                            onLogin: _login,
+                            onContinueAsGuest: _continueAsGuest,
+                            onForgotPassword: () => Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder:
+                                    (_, animation, secondaryAnimation) =>
+                                        const ForgotPasswordScreen(),
+                                transitionsBuilder:
+                                    (_, animation, secondaryAnimation, child) =>
+                                        child,
+                                transitionDuration: Duration.zero,
+                                reverseTransitionDuration: Duration.zero,
+                              ),
+                            ),
+                            onRegister: () => Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder:
+                                    (_, animation, secondaryAnimation) =>
+                                        const RegisterScreen(),
+                                transitionsBuilder:
+                                    (_, animation, secondaryAnimation, child) =>
+                                        child,
+                                reverseTransitionDuration: Duration.zero,
+                                transitionDuration: Duration.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onRegister: () => Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, animation, secondaryAnimation) => const RegisterScreen(),
-                        transitionsBuilder: (_, animation, secondaryAnimation, child) => child,
-                        reverseTransitionDuration: Duration.zero,
-                        transitionDuration: Duration.zero,
-                      ),
-                    ),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: MediaQuery.viewPaddingOf(context).bottom,
+              child: const ColoredBox(color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
@@ -121,9 +223,7 @@ class _HeroHeader extends StatelessWidget {
     return Container(
       height: height,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.orange, AppColors.orangeLight]),
-      ),
+      decoration: const BoxDecoration(gradient: AppColors.orangeGradient),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -135,7 +235,15 @@ class _HeroHeader extends StatelessWidget {
               children: [
                 const _BrandLogo(),
                 const SizedBox(height: 2),
-                Text('COFFEE • MILKTEA • GOOD VIBES', style: TextStyle(color: Colors.black, fontSize: width < 340 ? 8 : 10, fontWeight: FontWeight.w600, letterSpacing: 0.7)),
+                Text(
+                  'COFFEE • MILKTEA • GOOD VIBES',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: width < 340 ? 8 : 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.7,
+                  ),
+                ),
               ],
             ),
           ),
@@ -143,7 +251,12 @@ class _HeroHeader extends StatelessWidget {
             left: -width * 0.18,
             right: -width * 0.18,
             bottom: -48,
-            child: Image.asset('assets/images/login_drinks.png', height: height * 0.72, fit: BoxFit.contain, semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks'),
+            child: Image.asset(
+              'assets/images/login_drinks.png',
+              height: height * 0.72,
+              fit: BoxFit.contain,
+              semanticLabel: 'Three KKOPI.TEA bubble tea and coffee drinks',
+            ),
           ),
         ],
       ),
@@ -158,10 +271,21 @@ class _BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: const TextSpan(
-        style: TextStyle(fontSize: 42, height: 0.95, fontWeight: FontWeight.w900, letterSpacing: -1.5),
+        style: TextStyle(
+          fontSize: 42,
+          height: 0.95,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.5,
+        ),
         children: [
-          TextSpan(text: 'KKOPI', style: TextStyle(color: Colors.white)),
-          TextSpan(text: '.TEA', style: TextStyle(color: Colors.black)),
+          TextSpan(
+            text: 'KKOPI',
+            style: TextStyle(color: Colors.white),
+          ),
+          TextSpan(
+            text: '.TEA',
+            style: TextStyle(color: Colors.black),
+          ),
         ],
       ),
     );
@@ -169,7 +293,18 @@ class _BrandLogo extends StatelessWidget {
 }
 
 class _LoginCard extends StatelessWidget {
-  const _LoginCard({required this.formKey, required this.emailController, required this.passwordController, required this.obscurePassword, required this.isLoading, required this.onTogglePassword, required this.onLogin, required this.onForgotPassword, required this.onRegister});
+  const _LoginCard({
+    required this.formKey,
+    required this.emailController,
+    required this.passwordController,
+    required this.obscurePassword,
+    required this.isLoading,
+    required this.onTogglePassword,
+    required this.onLogin,
+    required this.onContinueAsGuest,
+    required this.onForgotPassword,
+    required this.onRegister,
+  });
   final GlobalKey<FormState> formKey;
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -177,6 +312,7 @@ class _LoginCard extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTogglePassword;
   final VoidCallback onLogin;
+  final VoidCallback onContinueAsGuest;
   final VoidCallback onForgotPassword;
   final VoidCallback onRegister;
 
@@ -185,15 +321,33 @@ class _LoginCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(42, 24, 42, 30),
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       child: Form(
         key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Welcome!', style: TextStyle(fontSize: 25, height: 1, fontWeight: FontWeight.w900, color: Colors.black)),
+            const Text(
+              'Welcome!',
+              style: TextStyle(
+                fontSize: 25,
+                height: 1,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+            ),
             const SizedBox(height: 5),
-            const Text('Log in to continue', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+            const Text(
+              'Log in to continue',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
             const SizedBox(height: 20),
             AuthTextField(
               controller: emailController,
@@ -202,7 +356,9 @@ class _LoginCard extends StatelessWidget {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Enter your username or email';
+                if (value == null || value.trim().isEmpty) {
+                  return 'Enter your username or email';
+                }
                 if (!value.contains('@')) return 'Enter a valid email address';
                 return null;
               },
@@ -218,26 +374,71 @@ class _LoginCard extends StatelessWidget {
               trailing: Semantics(
                 button: true,
                 label: obscurePassword ? 'Show password' : 'Hide password',
-                child: IconButton(onPressed: onTogglePassword, icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined), color: AppColors.iconMuted, tooltip: obscurePassword ? 'Show password' : 'Hide password'),
+                child: IconButton(
+                  onPressed: onTogglePassword,
+                  icon: Icon(
+                    obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  color: AppColors.iconMuted,
+                  tooltip: obscurePassword ? 'Show password' : 'Hide password',
+                ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Enter your password';
+                if (value == null || value.isEmpty) {
+                  return 'Enter your password';
+                }
                 if (value.length < 6) return 'Use at least 6 characters';
                 return null;
               },
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(onPressed: onForgotPassword, style: TextButton.styleFrom(minimumSize: const Size(44, 44), padding: EdgeInsets.zero), child: const Text('Forgot password?', style: TextStyle(color: AppColors.orange, fontSize: 11, fontWeight: FontWeight.w800))),
+              child: TextButton(
+                onPressed: onForgotPassword,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(
+                    color: AppColors.orange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
-            PrimaryButton(label: 'Log in', isLoading: isLoading, onPressed: onLogin),
-            const SizedBox(height: 42),
+            PrimaryButton(
+              label: 'Log in',
+              isLoading: isLoading,
+              onPressed: onLogin,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton(
+                onPressed: isLoading ? null : onContinueAsGuest,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.orange,
+                  side: const BorderSide(color: AppColors.orange),
+                ),
+                child: const Text('Continue as guest'),
+              ),
+            ),
+            const SizedBox(height: 16),
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
                 children: [
-                  const Text("Don't have an account? ", style: TextStyle(fontSize: 11, color: Color(0xFF1A1A1A))),
+                  const Text(
+                    "Don't have an account? ",
+                    style: TextStyle(fontSize: 11, color: Color(0xFF1A1A1A)),
+                  ),
                   TextButton(
                     onPressed: onRegister,
                     style: TextButton.styleFrom(
@@ -245,7 +446,14 @@ class _LoginCard extends StatelessWidget {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text('Register', style: TextStyle(fontSize: 11, color: AppColors.orange, fontWeight: FontWeight.w800)),
+                    child: const Text(
+                      'Register',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.orange,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -258,7 +466,18 @@ class _LoginCard extends StatelessWidget {
 }
 
 class AuthTextField extends StatelessWidget {
-  const AuthTextField({super.key, required this.controller, required this.hintText, required this.leadingIcon, this.trailing, this.obscureText = false, this.keyboardType, this.textInputAction, this.onSubmitted, this.validator});
+  const AuthTextField({
+    super.key,
+    required this.controller,
+    required this.hintText,
+    required this.leadingIcon,
+    this.trailing,
+    this.obscureText = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.onSubmitted,
+    this.validator,
+  });
   final TextEditingController controller;
   final String hintText;
   final IconData leadingIcon;
@@ -286,19 +505,42 @@ class AuthTextField extends StatelessWidget {
         suffixIcon: trailing,
         filled: true,
         fillColor: AppColors.inputFill,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.inputBorder)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.inputBorder)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.orange, width: 1.5)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE53935))),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE53935), width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.inputBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.inputBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.orange, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE53935)),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+        ),
       ),
     );
   }
 }
 
 class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({super.key, required this.label, required this.isLoading, required this.onPressed});
+  const PrimaryButton({
+    super.key,
+    required this.label,
+    required this.isLoading,
+    required this.onPressed,
+  });
   final String label;
   final bool isLoading;
   final VoidCallback onPressed;
@@ -310,8 +552,30 @@ class PrimaryButton extends StatelessWidget {
       height: 46,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.orange, disabledBackgroundColor: AppColors.orange.withValues(alpha: 0.6), foregroundColor: Colors.white, elevation: 4, shadowColor: Colors.black45, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9))),
-        child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.orange,
+          disabledBackgroundColor: AppColors.orange.withValues(alpha: 0.6),
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: Colors.black45,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
       ),
     );
   }

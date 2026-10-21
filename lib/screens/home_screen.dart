@@ -5,10 +5,12 @@ import '../data/advertisement.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
+import '../state/product_ratings_store.dart';
 import 'category_products_screen.dart';
 import 'notifications_screen.dart';
 import 'product_detail_screen.dart';
 import '../widgets/advertisement_carousel.dart';
+import '../widgets/category_icon_circle.dart';
 import '../widgets/menu_product_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,11 +34,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     menuCategoriesNotifier.addListener(_categoriesChanged);
+    ProductRatingsStore.summaries.addListener(_categoriesChanged);
   }
 
   @override
   void dispose() {
     menuCategoriesNotifier.removeListener(_categoriesChanged);
+    ProductRatingsStore.summaries.removeListener(_categoriesChanged);
     super.dispose();
   }
 
@@ -147,11 +151,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 16),
                       _SectionHeading(
-                        title: 'All Products',
+                        title: 'Best Selling',
                         onSeeAll: widget.onSeeAllCategories,
                       ),
                       const SizedBox(height: 10),
-                      for (final product in menuProducts) ...[
+                      for (final product
+                          in ProductRatingsStore.bestRatedProducts(
+                            menuProducts,
+                            limit: 3,
+                          )) ...[
                         MenuProductCard(
                           product: product,
                           onTap: () => _openProduct(product),
@@ -281,22 +289,7 @@ class _HomeCategoryButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Column(
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                gradient: AppColors.orangeGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.orange.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 31),
-            ),
+            CategoryIconCircle(icon: icon, size: 60),
             const SizedBox(height: 5),
             Text(
               label,

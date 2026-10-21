@@ -4,7 +4,7 @@ class OrderDraft {
   const OrderDraft({
     required this.product,
     this.quantity = 1,
-    this.size = 'Regular',
+    this.size = '16oz',
     this.sizePrice,
     this.sugar = '50%',
     this.ice = '50%',
@@ -27,19 +27,17 @@ class OrderDraft {
 
   int get unitPrice => sizePrice ?? product.price;
 
-  int get addOnTotal =>
-      addOns.fold<int>(
-        0,
-        (total, addOn) =>
-            total + (addOnUnitPrices[addOn] ?? addOnPrices[addOn] ?? 0),
-      );
+  int get addOnTotal => addOns.fold<int>(
+    0,
+    (total, addOn) =>
+        total + (addOnUnitPrices[addOn] ?? addOnPrices[addOn] ?? 0),
+  );
 
-  int get addInTotal =>
-      addIns.fold<int>(
-        0,
-        (total, addIn) =>
-            total + (addInUnitPrices[addIn] ?? addInPrices[addIn] ?? 0),
-      );
+  int get addInTotal => addIns.fold<int>(
+    0,
+    (total, addIn) =>
+        total + (addInUnitPrices[addIn] ?? addInPrices[addIn] ?? 0),
+  );
 
   int get total => (unitPrice + addInTotal + addOnTotal) * quantity;
 
@@ -73,7 +71,10 @@ class OrderDraft {
     final product = hasProductSnapshot
         ? MenuProduct(
             id: productId,
-            name: map['productName'] as String? ?? currentProduct?.name ?? 'Menu item',
+            name:
+                map['productName'] as String? ??
+                currentProduct?.name ??
+                'Menu item',
             description:
                 map['productDescription'] as String? ??
                 currentProduct?.description ??
@@ -109,7 +110,7 @@ class OrderDraft {
     return OrderDraft(
       product: product,
       quantity: (map['quantity'] as num?)?.toInt() ?? 1,
-      size: map['size'] as String? ?? 'Regular',
+      size: map['size'] as String? ?? '16oz',
       sizePrice: (map['sizePrice'] as num?)?.toInt(),
       sugar: map['sugar'] as String? ?? '50%',
       ice: map['ice'] as String? ?? '50%',
@@ -148,10 +149,7 @@ class OrderDraft {
   static Map<String, int> _readPrices(Object? rawPrices) {
     if (rawPrices is! Map) return const {};
     return rawPrices.map<String, int>((key, value) {
-      return MapEntry(
-        key.toString(),
-        value is num ? value.toInt() : 0,
-      );
+      return MapEntry(key.toString(), value is num ? value.toInt() : 0);
     });
   }
 }

@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kkopiconnect-groq-chat",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-19",
+  "vars": {
+    "FIREBASE_PROJECT_ID": "kkopiconnect-2f015"
+  },
+  "ratelimits": [
+    {
+      "name": "CHAT_LIMITER",
+      "namespace_id": "365637024668",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
 import 'package:kkopiconnect_app/data/search_analytics_repository.dart';
+import 'package:kkopiconnect_app/data/product_favorites_repository.dart';
 import 'package:kkopiconnect_app/screens/categories_screen.dart';
 import 'package:kkopiconnect_app/screens/favorites_screen.dart';
 import 'package:kkopiconnect_app/screens/home_screen.dart';
@@ -17,6 +18,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     FavoritesStore.productIds.value = <String>{};
     OrdersStore.orders.value = [];
+    FavoritesStore.repositoryForTesting = null;
   });
 
   test('menu categories match the requested lineup', () {
@@ -132,13 +134,14 @@ void main() {
   testWidgets('favorites page reflects added and removed products', (
     tester,
   ) async {
+    FavoritesStore.repositoryForTesting = _FakeFavoritesRepository();
     await tester.pumpWidget(
       MaterialApp(home: FavoritesScreen(onBrowseMenu: () {})),
     );
 
     expect(find.text('No favorites yet'), findsOneWidget);
 
-    FavoritesStore.toggle('iced-americano-caramel');
+    await FavoritesStore.toggle('iced-americano-caramel');
     await tester.pumpAndSettle();
     expect(find.text('Iced Americano Caramel'), findsOneWidget);
 
@@ -184,4 +187,17 @@ void main() {
     expect(find.text('New Menu'), findsNothing);
     expect(find.text('Loyalty Reward'), findsNothing);
   });
+}
+
+class _FakeFavoritesRepository implements FavoritesRepository {
+  @override
+  Future<void> setFavorite(String productId, bool isFavorite) async {
+    final updatedIds = Set<String>.from(FavoritesStore.productIds.value);
+    if (isFavorite) {
+      updatedIds.add(productId);
+    } else {
+      updatedIds.remove(productId);
+    }
+    FavoritesStore.productIds.value = updatedIds;
+  }
 }

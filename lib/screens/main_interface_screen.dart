@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/menu_catalog.dart';
 import '../data/menu_category_repository.dart';
+import '../state/favorites_store.dart';
+import '../state/product_ratings_store.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'chatbot_screen.dart';
@@ -32,16 +35,16 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   void initState() {
     super.initState();
     menuProducts = [];
-    _categoriesSubscription = MenuCategoryRepository()
-        .watchCategories()
-        .listen(
-          (categories) {
-            updateMenuCategories(categories);
-          },
-          onError: (Object error) {
-            debugPrint('Unable to load menu categories: $error');
-          },
-        );
+    FavoritesStore.startListening();
+    ProductRatingsStore.startListening();
+    _categoriesSubscription = MenuCategoryRepository().watchCategories().listen(
+      (categories) {
+        updateMenuCategories(categories);
+      },
+      onError: (Object error) {
+        debugPrint('Unable to load menu categories: $error');
+      },
+    );
     _productsSubscription = FirebaseFirestore.instance
         .collection('products')
         .snapshots()
@@ -92,13 +95,16 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canUseChatbot =
+        FirebaseAuth.instance.currentUser?.isAnonymous == false;
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         bottom: false,
         child: IndexedStack(index: _selectedIndex, children: _pages),
       ),
-      floatingActionButton: _selectedIndex == 2 || _selectedIndex == 4
+      floatingActionButton:
+          !canUseChatbot || _selectedIndex == 2 || _selectedIndex == 4
           ? null
           : FloatingActionButton(
               heroTag: 'main-ai-chat-fab',

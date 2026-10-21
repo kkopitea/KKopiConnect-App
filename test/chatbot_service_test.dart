@@ -55,16 +55,23 @@ void main() {
       expect(answer, contains('Vanilla Americano Latte Tea'));
     });
 
-    test('politely redirects unrelated topics', () {
+    test('passes ambiguous questions to the scoped AI assistant', () {
       expect(
-        MenuAssistantKnowledge.answer('Who won the game?', menuProducts),
+        MenuAssistantKnowledge.answer('What should I try?', menuProducts),
         isNull,
       );
     });
 
-    test('routes drink recommendations to the integrated AI', () {
+    test('passes unknown questions to the AI while the menu is loading', () {
       expect(
-        MenuAssistantKnowledge.answer('Recommend a drink for me', menuProducts),
+        MenuAssistantKnowledge.answer('What should I try?', const []),
+        isNull,
+      );
+    });
+
+    test('routes drink recommendations to the Groq-backed assistant', () {
+      expect(
+        MenuAssistantKnowledge.answer('Recommend drinks for me', menuProducts),
         isNull,
       );
     });

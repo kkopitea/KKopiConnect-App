@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_colors.dart';
 import 'login_screen_redesign.dart';
@@ -24,7 +25,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     WelcomeData(
       title: '',
       image: 'assets/images/welcome_customize.png',
-      description: 'Personalize sweetness, ice, and\nadd-ons.',
+      description: 'Personalize sweetness and ice\nto your liking.',
     ),
     WelcomeData(
       title: '',
@@ -53,12 +54,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
-  void _getStarted() {
+  Future<void> _getStarted() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool('hasSeenWelcomeSlides', true);
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) => child,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const LoginScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            child,
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),

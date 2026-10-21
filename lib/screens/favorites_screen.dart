@@ -31,11 +31,34 @@ class FavoritesScreen extends StatelessWidget {
                 onNavigateTab!(index);
               },
             ),
-      body: ValueListenableBuilder<Set<String>>(
-        valueListenable: FavoritesStore.productIds,
-        builder: (context, favoriteIds, _) {
+      body: AnimatedBuilder(
+        animation: Listenable.merge([
+          FavoritesStore.productIds,
+          FavoritesStore.isLoading,
+          FavoritesStore.loadError,
+        ]),
+        builder: (context, _) {
+          final loadError = FavoritesStore.loadError.value;
+          if (loadError != null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  loadError,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textMuted),
+                ),
+              ),
+            );
+          }
+          if (FavoritesStore.isLoading.value) {
+            return const Center(child: CircularProgressIndicator.adaptive());
+          }
           final products = menuProducts
-              .where((product) => favoriteIds.contains(product.id))
+              .where(
+                (product) =>
+                    FavoritesStore.productIds.value.contains(product.id),
+              )
               .toList();
           if (products.isEmpty) {
             return Center(
@@ -120,7 +143,7 @@ class FavoritesScreen extends StatelessWidget {
                   ),
                   trailing: IconButton(
                     tooltip: 'Remove from favorites',
-                    onPressed: () => FavoritesStore.remove(product.id),
+                    onPressed: () => _removeFavorite(context, product.id),
                     icon: const Icon(
                       Icons.favorite_rounded,
                       color: AppColors.orange,
@@ -141,5 +164,23 @@ class FavoritesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _removeFavorite(BuildContext context, String productId) async {
+    try {
+      await FavoritesStore.remove(productId);
+    } catch (error) {
+      debugPrint('Unable to remove product favorite: $error');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message.toString()
+                : 'Could not remove this favorite. Please try again.',
+          ),
+        ),
+      );
+    }
   }
 }

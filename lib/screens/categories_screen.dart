@@ -5,6 +5,7 @@ import '../data/advertisement.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
+import '../state/product_ratings_store.dart';
 import 'cart_screen.dart';
 import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
@@ -38,6 +39,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     super.initState();
     _activeCategoryId = widget.selectedCategoryId;
     menuCategoriesNotifier.addListener(_categoriesChanged);
+    ProductRatingsStore.summaries.addListener(_categoriesChanged);
   }
 
   @override
@@ -51,6 +53,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void dispose() {
     menuCategoriesNotifier.removeListener(_categoriesChanged);
+    ProductRatingsStore.summaries.removeListener(_categoriesChanged);
     super.dispose();
   }
 
@@ -63,20 +66,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     setState(() {});
   }
 
-  List<MenuProduct> get _visibleProducts => menuProducts.where((product) {
-    final matchesFilter = switch (_activeFilter) {
-      'Best Sellers' => product.isBestSeller,
-      'New' => product.isNew,
-      'Classic' => product.isClassic,
-      _ => true,
-    };
-    final matchesCategory =
-        _activeCategoryId == null ||
-        product.categoryIds.contains(_activeCategoryId);
-    return matchesFilter &&
-        matchesCategory &&
-        product.name.toLowerCase().contains(_searchQuery.toLowerCase());
-  }).toList();
+  List<MenuProduct> get _visibleProducts {
+    final matchingCategory = menuProducts.where((product) {
+      final matchesCategory =
+          _activeCategoryId == null ||
+          product.categoryIds.contains(_activeCategoryId);
+      return matchesCategory &&
+          product.name.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+    if (_activeFilter == 'Best Sellers') {
+      return ProductRatingsStore.bestRatedProducts(matchingCategory);
+    }
+    return matchingCategory.where((product) {
+      return switch (_activeFilter) {
+        'New' => product.isNew,
+        'Classic' => product.isClassic,
+        _ => true,
+      };
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,9 +293,7 @@ class _FilterTab extends StatelessWidget {
                     style: TextStyle(
                       color: selected ? Colors.white : AppColors.textMuted,
                       fontSize: 13,
-                      fontWeight: selected
-                          ? FontWeight.w800
-                          : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                     ),
                   ),
                 ),
