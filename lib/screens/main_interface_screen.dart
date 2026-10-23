@@ -80,7 +80,7 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
       selectedCategoryId: _requestedCategoryId,
     ),
     CartScreen(onNavigateTab: _selectTab),
-    OrderListScreen(),
+    OrderListScreen(onNavigateTab: _selectTab),
     ProfileScreen(onNavigateTab: _selectTab),
   ];
 
@@ -110,7 +110,9 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
               heroTag: 'main-ai-chat-fab',
               tooltip: 'Chat with KKOPI.TEA Assistant',
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const ChatbotScreen()),
+                MaterialPageRoute<void>(
+                  builder: (_) => ChatbotScreen(onNavigateTab: _selectTab),
+                ),
               ),
               backgroundColor: AppColors.orange,
               foregroundColor: Colors.white,

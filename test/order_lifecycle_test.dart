@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kkopiconnect_app/app_colors.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
 import 'package:kkopiconnect_app/data/order_number.dart';
@@ -15,6 +17,7 @@ import 'package:kkopiconnect_app/screens/order_list_screen.dart';
 import 'package:kkopiconnect_app/screens/order_type_screen.dart';
 import 'package:kkopiconnect_app/state/cart_store.dart';
 import 'package:kkopiconnect_app/state/orders_store.dart';
+import 'package:kkopiconnect_app/widgets/main_bottom_navigation_bar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +50,35 @@ void main() {
     expect(restored.total, draft.total);
   });
 
+  testWidgets('checkout keeps the white bottom navigation available', (
+    tester,
+  ) async {
+    var selectedTab = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrderTypeScreen(
+          drafts: [OrderDraft(product: menuProducts.first)],
+          customerId: 'guest-test-user',
+          initialCustomerName: 'Test Guest',
+          updateCustomerName: (_) async {},
+          paymentMethodSource: _FakePaymentMethodSource(),
+          orderRepository: _FakeOrderRepository(),
+          onNavigateTab: (index) => selectedTab = index,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final navigation = tester.widget<MainBottomNavigationBar>(
+      find.byType(MainBottomNavigationBar),
+    );
+    expect(navigation.selectedIndex, 2);
+    _expectWhiteSystemNavigationBar(tester);
+
+    await tester.tap(find.text('Orders'));
+    expect(selectedTab, 3);
+  });
+
   testWidgets(
     'cart proceeds through checkout and creates visible order history',
     (tester) async {
@@ -77,6 +109,7 @@ void main() {
       );
 
       expect(find.text('Iced Americano Caramel'), findsOneWidget);
+      _expectWhiteSystemNavigationBar(tester);
       await tester.tap(find.text('Proceed'));
       await tester.pumpAndSettle();
       expect(find.text('Order type & payment method'), findsOneWidget);
@@ -157,6 +190,43 @@ void main() {
     expect(repository.orders, hasLength(1));
   });
 
+  testWidgets('selected order card uses the soft orange highlight', (
+    tester,
+  ) async {
+    final repository = _FakeOrderRepository()
+      ..orders.add(
+        PlacedOrder(
+          id: '#KK010',
+          items: [OrderDraft(product: menuProducts.first)],
+          fulfillment: 'Pickup',
+          paymentMethod: 'Pay At The Counter',
+          instructions: '',
+          status: 'Completed',
+          createdAt: DateTime.utc(2025),
+        ),
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrderListScreen(
+          userId: 'guest-test-user',
+          orderRepository: repository,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('#KK010'));
+    await tester.pumpAndSettle();
+
+    final card = find
+        .ancestor(of: find.text('#KK010'), matching: find.byType(Material))
+        .first;
+    expect(tester.widget<Material>(card).color, AppColors.orangeTint);
+  });
+
   testWidgets('selecting orders keeps the existing history stream', (
     tester,
   ) async {
@@ -213,6 +283,35 @@ void main() {
       scrollOffset,
     );
   });
+
+  testWidgets('order history exposes Firestore errors and can retry', (
+    tester,
+  ) async {
+    final repository = _FakeOrderRepository()..failWatch = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrderListScreen(
+          userId: 'guest-test-user',
+          orderRepository: repository,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Could not load orders (permission-denied).'),
+      findsOneWidget,
+    );
+    expect(repository.watchCalls, 1);
+
+    repository.failWatch = false;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(repository.watchCalls, 2);
+    expect(find.text('No orders yet'), findsOneWidget);
+  });
 }
 
 class _FakePaymentMethodSource implements PaymentMethodSource {
@@ -229,6 +328,7 @@ class _FakeOrderRepository implements OrderRepository {
   final StreamController<List<PlacedOrder>> _ordersController =
       StreamController<List<PlacedOrder>>.broadcast(sync: true);
   int watchCalls = 0;
+  bool failWatch = false;
 
   @override
   Future<PlacedOrder> saveOrder(
@@ -245,6 +345,11 @@ class _FakeOrderRepository implements OrderRepository {
   @override
   Stream<List<PlacedOrder>> watchOrders(String userId) {
     watchCalls++;
+    if (failWatch) {
+      return Stream.error(
+        FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied'),
+      );
+    }
     return Stream<List<PlacedOrder>>.multi((controller) {
       final subscription = _ordersController.stream.listen(
         controller.add,

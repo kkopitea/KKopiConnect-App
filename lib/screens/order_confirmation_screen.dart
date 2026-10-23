@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../data/placed_order.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 import 'order_list_screen.dart';
 
 class OrderConfirmationScreen extends StatelessWidget {
@@ -34,6 +35,12 @@ class OrderConfirmationScreen extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
+        bottomNavigationBar: onNavigateTab == null
+            ? null
+            : MainBottomNavigationBar(
+                selectedIndex: 3,
+                onTap: (index) => _navigateToTab(context, index),
+              ),
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -165,10 +172,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                   FilledButton(
                     onPressed: () {
                       if (onNavigateTab != null) {
-                        Navigator.of(
-                          context,
-                        ).popUntil((route) => route.isFirst);
-                        onNavigateTab!(3);
+                        _navigateToTab(context, 3);
                       } else {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute<void>(
@@ -210,5 +214,10 @@ class OrderConfirmationScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _navigateToTab(BuildContext context, int index) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    onNavigateTab?.call(index);
   }
 }

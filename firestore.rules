@@ -1,0 +1,346 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isActiveAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'Administrator']
+        && (
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true
+          || (
+            !('active' in get(/databases/$(database)/documents/admins/$(request.auth.uid)).data)
+            && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true
+          )
+        );
+    }
+
+    function favoritePath(uid, productId) {
+      return /databases/$(database)/documents/users/$(uid)/favoriteProducts/$(productId);
+    }
+
+    function likePath(productId, uid) {
+      return /databases/$(database)/documents/productLikes/$(productId)/users/$(uid);
+    }
+
+    function ratingPath(productId, uid) {
+      return /databases/$(database)/documents/productRatings/$(productId)/users/$(uid);
+    }
+
+    match /admins/{userId} {
+      allow read: if (request.auth != null && request.auth.uid == userId) || isActiveAdmin();
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isActiveAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'name', 'email', 'phone', 'isActive', 'photoUrl',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.isActive == true;
+      allow update: if isActiveAdmin() || (
+        signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'photoUrl', 'updatedAt'])
+          && (!('name' in request.resource.data)
+            || request.resource.data.name is string)
+          && (!('phone' in request.resource.data)
+            || request.resource.data.phone is string)
+          && (!('photoUrl' in request.resource.data)
+            || request.resource.data.photoUrl is string)
+      );
+      allow delete: if false;
+
+      match /notificationReads/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['isRead', 'updatedAt'])
+          && request.resource.data.isRead == true;
+        allow delete: if false;
+      }
+
+      match /favoriteProducts/{productId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['productId', 'createdAt'])
+          && request.resource.data.productId == productId
+          && existsAfter(likePath(productId, uid));
+        allow delete: if signedIn()
+          && request.auth.uid == uid
+          && !existsAfter(likePath(productId, uid));
+        allow update: if false;
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if isActiveAdmin();
+      allow read: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll([
+          'id', 'orderId', 'userId', 'customerId', 'customerName',
+          'customerEmail', 'items', 'fulfillment', 'orderType',
+          'paymentMethod', 'instructions', 'status', 'total',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == orderId
+        && request.resource.data.orderId == orderId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.status == 'Pending'
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.fulfillment in ['Pickup', 'Dine In']
+        && request.resource.data.orderType == request.resource.data.fulfillment
+        && request.resource.data.total is int
+        && request.resource.data.total >= 0
+        && existsAfter(/databases/$(database)/documents/metadata/orderCounter);
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+        && request.resource.data.status == 'Cancelled';
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && resource.data.status in [
+          'Completed', 'Cancelled', 'completed', 'cancelled'
+        ];
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /advertisements/{advertisementId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /drinkAddIns/{optionId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /drinkAddOns/{optionId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    match /popularSearches/{searchId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'term', 'searchCount', 'updatedAt'
+        ])
+        && request.resource.data.term is string
+        && request.resource.data.term.size() > 0
+        && request.resource.data.searchCount is int
+        && request.resource.data.searchCount == 1;
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'term', 'searchCount', 'updatedAt'
+        ])
+        && request.resource.data.term is string
+        && request.resource.data.term.size() > 0
+        && request.resource.data.searchCount is int
+        && resource.data.searchCount is int
+        && request.resource.data.searchCount == resource.data.searchCount + 1;
+      allow delete: if false;
+    }
+
+    match /productLikes/{productId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'productId', 'favoriteCount', 'updatedAt'
+        ])
+        && request.resource.data.productId == productId
+        && request.resource.data.favoriteCount is int
+        && request.resource.data.favoriteCount == 1
+        && existsAfter(likePath(productId, request.auth.uid))
+        && existsAfter(favoritePath(request.auth.uid, productId));
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'productId', 'favoriteCount', 'updatedAt'
+        ])
+        && request.resource.data.productId == productId
+        && request.resource.data.favoriteCount is int
+        && (
+          (
+            existsAfter(likePath(productId, request.auth.uid))
+            && !exists(likePath(productId, request.auth.uid))
+            && request.resource.data.favoriteCount
+              == resource.data.favoriteCount + 1
+            && existsAfter(favoritePath(request.auth.uid, productId))
+          )
+          ||
+          (
+            !existsAfter(likePath(productId, request.auth.uid))
+            && exists(likePath(productId, request.auth.uid))
+            && request.resource.data.favoriteCount
+              == resource.data.favoriteCount - 1
+            && !existsAfter(favoritePath(request.auth.uid, productId))
+          )
+        );
+      allow delete: if false;
+
+      match /users/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == uid
+          && existsAfter(favoritePath(uid, productId))
+          && existsAfter(
+            /databases/$(database)/documents/productLikes/$(productId)
+          );
+        allow delete: if signedIn()
+          && request.auth.uid == uid
+          && !existsAfter(favoritePath(uid, productId));
+        allow update: if false;
+      }
+    }
+
+    match /productRatings/{productId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'productId', 'ratingCount', 'ratingTotal',
+          'ratingAverage', 'updatedAt'
+        ])
+        && request.resource.data.productId == productId
+        && request.resource.data.ratingCount == 1
+        && request.resource.data.ratingTotal is int
+        && request.resource.data.ratingTotal >= 1
+        && request.resource.data.ratingTotal <= 5
+        && request.resource.data.ratingAverage
+          == request.resource.data.ratingTotal
+        && existsAfter(ratingPath(productId, request.auth.uid))
+        && getAfter(ratingPath(productId, request.auth.uid)).data.rating
+          == request.resource.data.ratingTotal;
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'productId', 'ratingCount', 'ratingTotal',
+          'ratingAverage', 'updatedAt'
+        ])
+        && request.resource.data.productId == productId
+        && request.resource.data.ratingCount is int
+        && request.resource.data.ratingCount >= 1
+        && request.resource.data.ratingTotal is int
+        && request.resource.data.ratingTotal
+          >= request.resource.data.ratingCount
+        && request.resource.data.ratingTotal
+          <= request.resource.data.ratingCount * 5
+        && request.resource.data.ratingAverage
+          == request.resource.data.ratingTotal
+            / request.resource.data.ratingCount
+        && existsAfter(ratingPath(productId, request.auth.uid))
+        && getAfter(ratingPath(productId, request.auth.uid)).data.rating >= 1
+        && getAfter(ratingPath(productId, request.auth.uid)).data.rating <= 5
+        && (
+          (
+            !exists(ratingPath(productId, request.auth.uid))
+            && request.resource.data.ratingCount
+              == resource.data.ratingCount + 1
+            && request.resource.data.ratingTotal
+              == resource.data.ratingTotal
+                + getAfter(ratingPath(productId, request.auth.uid)).data.rating
+          )
+          ||
+          (
+            exists(ratingPath(productId, request.auth.uid))
+            && (
+              (
+                get(ratingPath(productId, request.auth.uid)).data.rating
+                  == getAfter(ratingPath(productId, request.auth.uid)).data.rating
+                && request.resource.data.ratingCount
+                  == resource.data.ratingCount
+                && request.resource.data.ratingTotal
+                  == resource.data.ratingTotal
+              )
+              ||
+              (
+                get(ratingPath(productId, request.auth.uid)).data.rating
+                  != getAfter(ratingPath(productId, request.auth.uid)).data.rating
+                && request.resource.data.ratingCount
+                  == resource.data.ratingCount
+                && request.resource.data.ratingTotal
+                  == resource.data.ratingTotal
+                    - get(ratingPath(productId, request.auth.uid)).data.rating
+                    + getAfter(ratingPath(productId, request.auth.uid)).data.rating
+              )
+            )
+          )
+        );
+      allow delete: if false;
+
+      match /users/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly([
+            'uid', 'rating', 'updatedAt'
+          ])
+          && request.resource.data.uid == uid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && existsAfter(
+            /databases/$(database)/documents/productRatings/$(productId)
+          );
+        allow delete: if false;
+      }
+    }
+
+    match /inventory/{itemId} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    match /paymentMethods/{methodId} {
+      allow read: if request.auth != null;
+      allow write: if isActiveAdmin();
+    }
+
+    match /metadata/orderCounter {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value is int
+        && request.resource.data.value == 1;
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value is int
+        && resource.data.value is int
+        && request.resource.data.value == resource.data.value + 1;
+      allow delete: if false;
+    }
+  }
+}

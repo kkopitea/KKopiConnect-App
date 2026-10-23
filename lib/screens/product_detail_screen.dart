@@ -485,13 +485,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           ),
                                           action: SnackBarAction(
                                             label: 'View cart',
-                                            onPressed: () =>
+                                            onPressed: () {
+                                              if (widget.onNavigateTab !=
+                                                  null) {
+                                                Navigator.of(context).popUntil(
+                                                  (route) => route.isFirst,
+                                                );
+                                                widget.onNavigateTab!(2);
+                                              } else {
                                                 Navigator.of(context).push(
                                                   MaterialPageRoute<void>(
                                                     builder: (_) =>
                                                         const CartScreen(),
                                                   ),
-                                                ),
+                                                );
+                                              }
+                                            },
                                           ),
                                         ),
                                       );

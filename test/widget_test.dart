@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kkopiconnect_app/main.dart';
+import 'package:kkopiconnect_app/app_colors.dart';
 import 'package:kkopiconnect_app/screens/cart_screen.dart';
 import 'package:kkopiconnect_app/screens/chatbot_screen.dart';
 import 'package:kkopiconnect_app/screens/customize_drink_screen.dart';
@@ -32,6 +33,7 @@ import 'package:kkopiconnect_app/state/cart_store.dart';
 import 'package:kkopiconnect_app/state/favorites_store.dart';
 import 'package:kkopiconnect_app/state/product_ratings_store.dart';
 import 'package:kkopiconnect_app/widgets/cloudinary_image.dart';
+import 'package:kkopiconnect_app/widgets/main_bottom_navigation_bar.dart';
 import 'package:kkopiconnect_app/widgets/product_rating_control.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -83,6 +85,32 @@ void main() {
     },
   );
 
+  testWidgets('bottom navigation stays white with orange selected item', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          bottomNavigationBar: MainBottomNavigationBar(
+            selectedIndex: 0,
+            onTap: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final navigation = find.byType(MainBottomNavigationBar);
+    final background = tester.widget<Container>(
+      find.descendant(of: navigation, matching: find.byType(Container)).first,
+    );
+    final selectedIcon = tester.widget<Icon>(find.byIcon(Icons.home_rounded));
+    final selectedLabel = tester.widget<Text>(find.text('Home'));
+
+    expect(background.color, Colors.white);
+    expect(selectedIcon.color, AppColors.orange);
+    expect(selectedLabel.style?.color, AppColors.orange);
+  });
+
   testWidgets('star rating can be set and changed separately', (tester) async {
     int? selectedRating;
     await tester.pumpWidget(
@@ -130,7 +158,7 @@ void main() {
   testWidgets('login screen offers guest access without registration', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -233,9 +261,11 @@ void main() {
   testWidgets('order confirmation uses a white system navigation bar', (
     tester,
   ) async {
+    var selectedTab = -1;
     await tester.pumpWidget(
       MaterialApp(
         home: OrderConfirmationScreen(
+          onNavigateTab: (index) => selectedTab = index,
           order: PlacedOrder(
             id: 'KK123',
             items: const [],
@@ -250,6 +280,58 @@ void main() {
     );
 
     _expectWhiteSystemNavigationBar(tester);
+    expect(find.byType(MainBottomNavigationBar), findsOneWidget);
+    final navigation = tester.widget<MainBottomNavigationBar>(
+      find.byType(MainBottomNavigationBar),
+    );
+    expect(navigation.selectedIndex, 3);
+    await tester.tap(find.text('Cart'));
+    expect(selectedTab, 2);
+    final viewOrdersButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'View my orders'),
+    );
+    viewOrdersButton.onPressed!();
+    expect(selectedTab, 3);
+  });
+
+  testWidgets('view cart action selects the shared cart tab', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    CartStore.clear();
+    var selectedTab = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ProductDetailScreen(
+                    product: menuProducts.first,
+                    onNavigateTab: (index) => selectedTab = index,
+                  ),
+                ),
+              ),
+              child: const Text('Open product'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open product'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add to cart'));
+    await tester.pump();
+    final snackbar = tester.widget<SnackBar>(find.byType(SnackBar));
+    snackbar.action!.onPressed();
+    await tester.pumpAndSettle();
+
+    expect(selectedTab, 2);
+    expect(find.byType(ProductDetailScreen), findsNothing);
+    CartStore.clear();
   });
 
   testWidgets('app starts on the splash screen', (WidgetTester tester) async {
@@ -405,6 +487,81 @@ void main() {
     await tester.tap(find.byTooltip('View and order ${product.name}'));
     await tester.pumpAndSettle();
     expect(find.byType(ProductDetailScreen), findsOneWidget);
+  });
+
+  testWidgets('chatbot product add-to-cart opens the shared Cart tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    CartStore.clear();
+    var selectedTab = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChatbotScreen(
+          chatbotService: _FakeChatbotReplyService(),
+          onNavigateTab: (index) => selectedTab = index,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Show best sellers'));
+    await tester.pumpAndSettle();
+    final product = menuProducts.firstWhere((item) => item.isBestSeller);
+    await tester.tap(find.byTooltip('View and order ${product.name}'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add to cart'));
+    await tester.pump();
+    final snackbar = tester.widget<SnackBar>(find.byType(SnackBar));
+    snackbar.action!.onPressed();
+    await tester.pumpAndSettle();
+
+    expect(selectedTab, 2);
+    expect(find.byType(ProductDetailScreen), findsNothing);
+    expect(CartStore.items.value, hasLength(1));
+    CartStore.clear();
+  });
+
+  testWidgets('chatbot product customization opens the shared Cart tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    CartStore.clear();
+    var selectedTab = -1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChatbotScreen(
+          chatbotService: _FakeChatbotReplyService(),
+          onNavigateTab: (index) => selectedTab = index,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Show best sellers'));
+    await tester.pumpAndSettle();
+    final product = menuProducts.firstWhere((item) => item.isBestSeller);
+    await tester.tap(find.byTooltip('View and order ${product.name}'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Customize'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Customize'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Add to cart'));
+    await tester.pumpAndSettle();
+
+    expect(selectedTab, 2);
+    expect(find.byType(CustomizeDrinkScreen), findsNothing);
+    expect(CartStore.items.value, hasLength(1));
+    CartStore.clear();
   });
 
   testWidgets('fruit tea prompt shows matching product cards', (tester) async {
@@ -590,6 +747,32 @@ void main() {
     expect(CartStore.items.value.single.addIns, isEmpty);
     expect(CartStore.items.value.single.addOns, isEmpty);
     CartStore.clear();
+  });
+
+  testWidgets('sugar choices have distinct labels and include 100 percent', (
+    tester,
+  ) async {
+    final product = menuProducts.first;
+    final productWithLimitedSugarLevels = MenuProduct(
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      categoryId: product.categoryId,
+      categoryIds: product.categoryIds,
+      sugarLevels: const ['0%', '25%', '50%', '75%'],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CustomizeDrinkScreen(
+          draft: OrderDraft(product: productWithLimitedSugarLevels),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('0% sugar'), findsOneWidget);
+    expect(find.text('100% sugar'), findsOneWidget);
   });
 
   testWidgets('curved cart page keeps empty-state text in view', (

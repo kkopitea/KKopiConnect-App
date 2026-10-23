@@ -88,10 +88,9 @@ Product hearts are saved to `users/{uid}/favoriteProducts/{productId}` so a
 signed-in customer's favorites follow them between devices. Favorites are
 private saves and do not affect star ratings.
 
-Merge the following access pattern into the existing Firestore rules before
-using favorites. Add the helper functions inside the existing
-`match /databases/{database}/documents` block, then merge the matches into the
-same block. Do not replace existing product, order, or admin rules.
+The favorite access pattern is implemented in `firestore.rules` and deployed
+with `firebase deploy --only firestore:rules`. Keep existing product, order,
+and admin rules when changing the ruleset.
 
 ```text
 function signedIn() {
@@ -176,9 +175,9 @@ Selling section and chatbot rank products by average star rating (then number
 of ratings); before products are rated, they fall back to the existing
 admin-marked best sellers.
 
-Merge these rating rules alongside the existing favorites rules. Keep the
-current product, order, and admin rules. `productRatings` summary documents are
-readable by the app, while individual ratings are private to their author.
+The deployed `firestore.rules` also includes the following rating access
+pattern. `productRatings` summary documents are readable by the app, while
+individual ratings are private to their author.
 
 ```text
 function ratingPath(productId, uid) {
@@ -330,15 +329,15 @@ the same collection/document fields; the mobile repository also exposes
 clients to read these collections and restrict writes to authorized admins.
 
 Per-user notification read state is stored at
-`users/{uid}/notificationReads/{notificationId}`. Firestore Security Rules must
-allow each signed-in user to read and write only their own notification state,
-allow clients to read product and active-promotion data, allow signed-in users
-to query and increment search counts in `popularSearches`, and restrict
-product/category/promotion/notification/payment-method/option writes to
-authorized admin accounts. Signed-in users need read access to active
-categories, notifications, and payment methods. The mobile
-project does not contain Firestore rules; configure these in the Firebase
-project before expecting live reads or writes to work.
+`users/{uid}/notificationReads/{notificationId}`. The deployed Firestore
+Security Rules allow signed-in users to read the app catalog and configuration
+collections, limit profiles, notification state, favorites, ratings, and orders
+to their owner, and restrict shared configuration writes to active admins.
+Rules are maintained in `firestore.rules` and configured in `firebase.json`.
+Deploy updates from the project directory with
+`firebase deploy --only firestore:rules`. The web admin client must use this
+same Firebase project and an authenticated account recognized as an active
+admin by `isActiveAdmin()`.
 
 New customer profiles are created at `users/{uid}` by
 `lib/screens/register_screen.dart` with `name`, `email`, `phone`, `isActive`,
@@ -347,42 +346,14 @@ web-managed name changes; profile-photo URLs are stored in both Firebase Auth
 and the `photoUrl` field. Mobile implementation:
 `lib/screens/profile_screen.dart`.
 
-For web-editable content, signed-in app users need read access to
-`categories`, `notifications`, and `paymentMethods`. Only the authorized web
-admin should write those collections. If the Firebase project uses custom
-claims, an admin-only write condition can be based on
-`request.auth.token.admin == true`; assign that claim from a trusted
-Admin-SDK environment. Merge collection-specific rules into the current rules
-instead of replacing the full ruleset. Example rule fragments:
-
-```text
-function signedIn() {
-  return request.auth != null;
-}
-
-function isAdmin() {
-  return signedIn() && request.auth.token.admin == true;
-}
-
-match /categories/{categoryId} {
-  allow read: if signedIn();
-  allow write: if isAdmin();
-}
-
-match /notifications/{notificationId} {
-  allow read: if signedIn();
-  allow write: if isAdmin();
-}
-
-match /paymentMethods/{methodId} {
-  allow read: if signedIn();
-  allow write: if isAdmin();
-}
-```
+For web-editable content, signed-in app users have read access to
+`categories`, `notifications`, and `paymentMethods`. Writes to those
+collections are restricted to active admins recognized by `isActiveAdmin()`.
+The web admin must sign in with an account that has an active admin document
+in `admins/{uid}` with an `admin` or `Administrator` role.
 
 Do not grant mobile users admin writes to these shared configuration
-collections. For each signed-in user, separately permit read/write of only
-their own `users/{uid}/notificationReads/{notificationId}` documents.
+collections.
 
 Orders are written to `orders/{orderId}` by
 `lib/data/order_repository.dart`. This is the shared mobile/admin contract:
@@ -400,44 +371,15 @@ IDs and remain readable. The admin app should change the shared `status` field
 on the existing document to publish status updates to the customer app in real
 time; do not create a second order collection or replace the document.
 
-A signed-in customer must be permitted to create an order whose `userId`
-matches their Firebase Auth UID, read only their own orders, and update only
-their own `status` to `Cancelled`.
-For example, merge the following match into the Firebase project's existing
-Firestore rules (do not replace rules for other collections):
-
-```text
-match /orders/{orderId} {
-  allow create: if request.auth != null
-    && request.resource.data.userId == request.auth.uid
-    && request.resource.data.id == orderId
-    && request.resource.data.status == 'Pending';
-  allow read: if request.auth != null
-    && resource.data.userId == request.auth.uid;
-  allow update: if request.auth != null
-    && resource.data.userId == request.auth.uid
-    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-    && request.resource.data.status == 'Cancelled';
-  allow delete: if request.auth != null
-    && resource.data.userId == request.auth.uid
-    && resource.data.status in ['Completed', 'Cancelled'];
-}
-
-match /metadata/orderCounter {
-  allow read: if request.auth != null;
-  allow create: if request.auth != null
-    && request.resource.data.keys().hasOnly(['value'])
-    && request.resource.data.value == 1;
-  allow update: if request.auth != null
-    && request.resource.data.keys().hasOnly(['value'])
-    && request.resource.data.value == resource.data.value + 1;
-}
-```
+A signed-in customer can create an order whose `userId` matches their Firebase
+Auth UID, read only their own orders, and update only their own `status` to
+`Cancelled`. The deployed rules are maintained in `firestore.rules`; deploy
+updates with `firebase deploy --only firestore:rules`.
 
 The app increments `metadata/orderCounter` and creates the order in one
-Firestore transaction. Merge this counter rule into the project's existing
-rules before releasing this version; do not replace rules for other
-collections.
+Firestore transaction. The checked-in rules grant signed-in users the counter
+access needed for that transaction and restrict customer order reads,
+cancellations, and deletions to their own eligible orders.
 
 Admin status changes should be made by a trusted server using the Firebase
 Admin SDK, not by allowing clients to update arbitrary order fields. If placing

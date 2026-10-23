@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -7,13 +8,20 @@ import '../data/placed_order.dart';
 import '../state/orders_store.dart';
 import '../widgets/cloudinary_image.dart';
 import '../widgets/curved_content_page.dart';
+import '../widgets/main_bottom_navigation_bar.dart';
 import 'categories_screen.dart';
 
 class OrderListScreen extends StatefulWidget {
-  const OrderListScreen({super.key, this.userId, this.orderRepository});
+  const OrderListScreen({
+    super.key,
+    this.userId,
+    this.orderRepository,
+    this.onNavigateTab,
+  });
 
   final String? userId;
   final OrderRepository? orderRepository;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<OrderListScreen> createState() => _OrderListScreenState();
@@ -62,8 +70,23 @@ class _OrderListScreenState extends State<OrderListScreen> {
           }
 
           if (snapshot.hasError) {
-            return const Center(
-              child: Text('Could not load orders. Check Firestore access.'),
+            final error = snapshot.error;
+            final errorCode = error is FirebaseException
+                ? ' (${error.code})'
+                : '';
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Could not load orders$errorCode.'),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => setState(_updateOrdersStream),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -249,8 +272,10 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       } else {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) =>
-                                OrderDetailsScreen(order: orders[index]),
+                            builder: (_) => OrderDetailsScreen(
+                              order: orders[index],
+                              onNavigateTab: widget.onNavigateTab,
+                            ),
                           ),
                         );
                       }
@@ -359,11 +384,11 @@ class _OrderCard extends StatelessWidget {
     final statusColor = _statusColor(order.status);
 
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
+      color: isSelected ? AppColors.orangeTint : Colors.white,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         splashColor: AppColors.orangeTint,
         highlightColor: AppColors.orangeTint,
         child: Padding(
@@ -463,9 +488,14 @@ class _OrderCard extends StatelessWidget {
 }
 
 class OrderDetailsScreen extends StatelessWidget {
-  const OrderDetailsScreen({super.key, required this.order});
+  const OrderDetailsScreen({
+    super.key,
+    required this.order,
+    this.onNavigateTab,
+  });
 
   final PlacedOrder order;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
@@ -474,16 +504,17 @@ class OrderDetailsScreen extends StatelessWidget {
         ? null
         : FirestoreOrderRepository().watchOrders(user.uid);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('Order Details'),
-        backgroundColor: Colors.transparent,
-        flexibleSpace: const DecoratedBox(
-          decoration: BoxDecoration(gradient: AppColors.orangeGradient),
-        ),
-        foregroundColor: Colors.white,
-      ),
+    return CurvedContentPage(
+      title: 'Order Details',
+      bottomNavigationBar: onNavigateTab == null
+          ? null
+          : MainBottomNavigationBar(
+              selectedIndex: 3,
+              onTap: (index) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                onNavigateTab!(index);
+              },
+            ),
       body: StreamBuilder<List<PlacedOrder>>(
         stream: orderStream,
         builder: (context, orderSnapshot) =>
@@ -858,7 +889,12 @@ class _OrderTrackingStep extends StatelessWidget {
 const _panelDecoration = BoxDecoration(
   color: Colors.white,
   borderRadius: BorderRadius.all(Radius.circular(12)),
-  border: Border.fromBorderSide(BorderSide(color: Color(0xFFE7E7E7))),
+  border: Border(
+    top: BorderSide(color: Colors.white),
+    right: BorderSide(color: Colors.white),
+    bottom: BorderSide(color: Colors.white),
+    left: BorderSide(color: Colors.white),
+  ),
 );
 
 Color _statusColor(String status) => switch (status.toLowerCase()) {

@@ -390,9 +390,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _openNotification(_NotificationItem item) {
     if (item.type == 'Orders') {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const OrderListScreen()));
+      if (widget.onNavigateTab != null) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        widget.onNavigateTab!(3);
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+        );
+      }
     } else if (item.type == 'Promotion' || item.type == 'System') {
       Navigator.of(
         context,

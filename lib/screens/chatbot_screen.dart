@@ -16,9 +16,10 @@ import 'product_detail_screen.dart';
 import 'register_screen.dart';
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key, this.chatbotService});
+  const ChatbotScreen({super.key, this.chatbotService, this.onNavigateTab});
 
   final ChatbotReplyService? chatbotService;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
@@ -422,7 +423,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void _openProduct(MenuProduct product) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ProductDetailScreen(product: product),
+        builder: (_) => ProductDetailScreen(
+          product: product,
+          onNavigateTab: widget.onNavigateTab,
+        ),
       ),
     );
   }

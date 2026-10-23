@@ -69,7 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? (profile!['name'] as String).trim()
                         : '';
                     final photoUrl =
-                        profile?['photoUrl'] as String? ?? user?.photoURL;
+                        user?.photoURL ?? profile?['photoUrl'] as String?;
                     return Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -273,7 +273,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           widget.onNavigateTab!(3);
         } else {
           await Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  OrderListScreen(onNavigateTab: widget.onNavigateTab),
+            ),
           );
         }
         return;
@@ -412,7 +415,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.onNavigateTab!(3);
       } else {
         await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const OrderListScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                OrderListScreen(onNavigateTab: widget.onNavigateTab),
+          ),
         );
       }
     }
@@ -459,10 +465,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         throw StateError('Please sign in to update your photo.');
       }
       await user.updatePhotoURL(result.secureUrl);
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'photoUrl': result.secureUrl,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
       await user.reload();
       if (!mounted) return;
       setState(() {});

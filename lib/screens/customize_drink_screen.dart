@@ -29,11 +29,11 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   late int sizePrice;
   String sugar = '50%';
   static const _sugarOptions = [
-    ('0%', 'No sugar'),
-    ('25%', 'Less'),
-    ('50%', 'Normal'),
-    ('75%', 'Slightly sweet'),
-    ('100%', 'Sweet'),
+    ('0%', '0% sugar'),
+    ('25%', '25% sugar'),
+    ('50%', '50% sugar'),
+    ('75%', '75% sugar'),
+    ('100%', '100% sugar'),
   ];
   @override
   void initState() {
@@ -172,8 +172,22 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
 
   List<(String, String)> _sugarOptionsFor(MenuProduct product) {
     if (product.sugarLevels.isEmpty) return _sugarOptions;
-    final options = product.sugarLevels.map((level) => (level, level)).toList();
+    final options = product.sugarLevels
+        .map(
+          (level) => (
+            level,
+            _sugarOptions
+                    .where((option) => option.$1 == level)
+                    .firstOrNull
+                    ?.$2 ??
+                '$level sugar',
+          ),
+        )
+        .toList();
     if (!product.sugarLevels.contains('50%')) options.insert(0, ('50%', '50%'));
+    if (!product.sugarLevels.contains('100%')) {
+      options.add(('100%', '100% sugar'));
+    }
     return options;
   }
 }

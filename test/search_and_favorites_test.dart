@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
+import 'package:kkopiconnect_app/data/placed_order.dart';
 import 'package:kkopiconnect_app/data/search_analytics_repository.dart';
 import 'package:kkopiconnect_app/data/product_favorites_repository.dart';
 import 'package:kkopiconnect_app/screens/categories_screen.dart';
@@ -84,6 +85,35 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Mango Tea'), findsOneWidget);
+  });
+
+  testWidgets('order notification switches to the Orders tab', (tester) async {
+    var selectedTab = -1;
+    OrdersStore.orders.value = [
+      PlacedOrder(
+        id: '#KK777',
+        items: [OrderDraft(product: menuProducts.first)],
+        fulfillment: 'Pickup',
+        paymentMethod: 'Pay At The Counter',
+        instructions: '',
+        status: 'Pending',
+        createdAt: DateTime(2026),
+      ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          onNavigateTab: (index) => selectedTab = index,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Order Pending'));
+    await tester.pumpAndSettle();
+
+    expect(selectedTab, 3);
+    expect(find.text('MY ORDERS'), findsNothing);
   });
 
   testWidgets('top category carousel filters products by category', (
