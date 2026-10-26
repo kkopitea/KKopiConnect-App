@@ -7,10 +7,16 @@ import '../data/advertisement.dart';
 import '../data/advertisement_repository.dart';
 
 class AdvertisementCarousel extends StatefulWidget {
-  const AdvertisementCarousel({super.key, required this.onSelect, this.height});
+  const AdvertisementCarousel({
+    super.key,
+    required this.onSelect,
+    this.height,
+    this.advertisements,
+  });
 
   final ValueChanged<Advertisement> onSelect;
   final double? height;
+  final Stream<List<Advertisement>>? advertisements;
 
   @override
   State<AdvertisementCarousel> createState() => _AdvertisementCarouselState();
@@ -18,7 +24,8 @@ class AdvertisementCarousel extends StatefulWidget {
 
 class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
   final _pageController = PageController();
-  late final _advertisementStream = _watchAdvertisements();
+  late final _advertisementStream =
+      widget.advertisements ?? _watchAdvertisements();
   int _activePage = 0;
   Timer? _autoAdvanceTimer;
   String? _advertisementSignature;
@@ -32,7 +39,7 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
 
   Stream<List<Advertisement>> _watchAdvertisements() {
     try {
-      return AdvertisementRepository().watchAll();
+      return AdvertisementRepository().watchActive();
     } catch (error, stackTrace) {
       debugPrint('Unable to watch advertisements: $error');
       return Stream<List<Advertisement>>.error(
@@ -78,20 +85,10 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           debugPrint('Promotion carousel failed to load: ${snapshot.error}');
-          return Container(
-            height: bannerHeight,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.orange,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Text(
-              'Promotions are temporarily unavailable',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          return _statusCard(
+            bannerHeight,
+            'Promotions are temporarily unavailable',
+            icon: Icons.wifi_off_rounded,
           );
         }
         final advertisements = (snapshot.data ?? const <Advertisement>[])
@@ -100,7 +97,14 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
         _syncAutoAdvance(advertisements);
 
         if (advertisements.isEmpty) {
-          return const SizedBox.shrink();
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _statusCard(
+              bannerHeight,
+              'Loading promotions...',
+              loading: true,
+            );
+          }
+          return _statusCard(bannerHeight, 'No active promotions');
         }
 
         final selectedPage = _activePage % advertisements.length;
@@ -109,7 +113,7 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
           height: bannerHeight,
           padding: EdgeInsets.all(compact ? 12 : 14),
           decoration: BoxDecoration(
-            color: AppColors.orange,
+            gradient: AppColors.orangeGradient,
             borderRadius: BorderRadius.circular(14),
             boxShadow: const [
               BoxShadow(
@@ -130,7 +134,6 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
                   itemBuilder: (context, index) {
                     final advertisement =
                         advertisements[index % advertisements.length];
-                    final imageUrl = advertisement.imageUrl.trim();
                     return Row(
                       children: [
                         Expanded(
@@ -194,18 +197,12 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
-                                  width: compact ? 88 : 126,
-                                  height: compact ? 110 : 128,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      _fallbackImage(compact),
-                                )
-                              : _fallbackImage(compact),
+                        _AdvertisementImageGallery(
+                          key: ValueKey(advertisement.id),
+                          imageUrls: advertisement.campaignImageUrls,
+                          width: compact ? 88 : 126,
+                          height: compact ? 110 : 128,
+                          isBuyOneTakeOne: advertisement.isBuyOneTakeOne,
                         ),
                       ],
                     );
@@ -254,10 +251,162 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
     );
   }
 
-  Widget _fallbackImage(bool compact) => Image.asset(
+  Widget _statusCard(
+    double height,
+    String message, {
+    bool loading = false,
+    IconData icon = Icons.local_offer_outlined,
+  }) => Container(
+    height: height,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      gradient: AppColors.orangeGradient,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (loading)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+        else
+          Icon(icon, color: Colors.white),
+        const SizedBox(width: 9),
+        Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AdvertisementImageGallery extends StatefulWidget {
+  const _AdvertisementImageGallery({
+    super.key,
+    required this.imageUrls,
+    required this.width,
+    required this.height,
+    required this.isBuyOneTakeOne,
+  });
+
+  final List<String> imageUrls;
+  final double width;
+  final double height;
+  final bool isBuyOneTakeOne;
+
+  @override
+  State<_AdvertisementImageGallery> createState() =>
+      _AdvertisementImageGalleryState();
+}
+
+class _AdvertisementImageGalleryState
+    extends State<_AdvertisementImageGallery> {
+  final _pageController = PageController();
+  int _activePage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageCount = widget.imageUrls.length;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageCount == 0)
+              _fallbackImage()
+            else
+              PageView.builder(
+                controller: _pageController,
+                itemCount: imageCount,
+                onPageChanged: (index) => setState(() => _activePage = index),
+                itemBuilder: (context, index) => Image.network(
+                  widget.imageUrls[index],
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => _fallbackImage(),
+                ),
+              ),
+            if (imageCount > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 5,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var index = 0; index < imageCount; index++)
+                      Semantics(
+                        label: 'Campaign image ${index + 1}',
+                        selected: index == _activePage,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: index == _activePage
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            if (widget.isBuyOneTakeOne)
+              Positioned(
+                top: 4,
+                left: 3,
+                right: 3,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                    child: Text(
+                      'Buy One, Take One',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 7,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackImage() => Image.asset(
     'assets/images/login_drinks.png',
-    width: compact ? 88 : 126,
-    height: compact ? 110 : 128,
+    width: widget.width,
+    height: widget.height,
     fit: BoxFit.contain,
   );
 }

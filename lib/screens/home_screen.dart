@@ -186,13 +186,48 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _selectAdvertisement(Advertisement advertisement) {
-    for (final product in menuProducts) {
-      if (product.id == advertisement.productId) {
-        _openProduct(product);
-        return;
-      }
+    final products = advertisement.selectedProductIds
+        .map(
+          (id) => menuProducts.where((product) => product.id == id).firstOrNull,
+        )
+        .whereType<MenuProduct>()
+        .toList(growable: false);
+    if (products.isEmpty) {
+      widget.onSeeAllCategories();
+    } else if (products.length == 1) {
+      _openProduct(products.first);
+    } else {
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Text(
+                  advertisement.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              for (final product in products)
+                ListTile(
+                  title: Text(product.name),
+                  subtitle: Text('${AppColors.pesoSymbol}${product.price}'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openProduct(product);
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
     }
-    widget.onSeeAllCategories();
   }
 
   void _openProduct(MenuProduct product) {

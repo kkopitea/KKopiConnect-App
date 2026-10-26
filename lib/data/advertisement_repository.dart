@@ -17,12 +17,19 @@ class AdvertisementRepository {
     final advertisements = snapshot.docs
         .map((document) => Advertisement.fromMap(document.id, document.data()))
         .toList();
-    advertisements.sort((first, second) {
-      final byOrder = first.sortOrder.compareTo(second.sortOrder);
-      return byOrder != 0 ? byOrder : first.title.compareTo(second.title);
-    });
-    return advertisements;
+    return sort(advertisements);
   });
+
+  static List<Advertisement> sort(List<Advertisement> advertisements) {
+    final sorted = List<Advertisement>.of(advertisements);
+    sorted.sort((first, second) {
+      final byOrder = first.sortOrder.compareTo(second.sortOrder);
+      if (byOrder != 0) return byOrder;
+      final byTitle = first.title.compareTo(second.title);
+      return byTitle != 0 ? byTitle : first.id.compareTo(second.id);
+    });
+    return sorted;
+  }
 
   Stream<List<Advertisement>> watchActive() => watchAll().map(
     (advertisements) => advertisements
