@@ -162,7 +162,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             id: 'order-${order.id}',
                             title: 'Order ${order.status}',
                             message:
-                                'Order ${order.formattedId} is ${order.status.toLowerCase()}.',
+                                '${order.fulfillmentLabel} order is ${order.status.toLowerCase()}.',
                             time: _dateLabel(order.createdAt),
                             type: 'Orders',
                             icon: Icons.receipt_long_rounded,

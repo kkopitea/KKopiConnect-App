@@ -68,7 +68,9 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
 
     _autoAdvanceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted || !_pageController.hasClients) return;
-      _pageController.nextPage(
+      final nextPage = (_activePage + 1) % advertisements.length;
+      _pageController.animateToPage(
+        nextPage,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
       );
@@ -109,12 +111,12 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
 
         final selectedPage = _activePage % advertisements.length;
 
+        final borderRadius = BorderRadius.circular(14);
         return Container(
           height: bannerHeight,
-          padding: EdgeInsets.all(compact ? 12 : 14),
           decoration: BoxDecoration(
             gradient: AppColors.orangeGradient,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: borderRadius,
             boxShadow: const [
               BoxShadow(
                 color: Color(0x22000000),
@@ -123,128 +125,90 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
               ),
             ],
           ),
-          child: Column(
-            children: [
-              Expanded(
-                child: PageView.builder(
-                  key: ValueKey(advertisements.map((ad) => ad.id).join('|')),
-                  controller: _pageController,
-                  itemCount: 1000000,
-                  onPageChanged: (index) => setState(() => _activePage = index),
-                  itemBuilder: (context, index) {
-                    final advertisement =
-                        advertisements[index % advertisements.length];
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                advertisement.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: compact ? 15 : 17,
-                                  fontWeight: FontWeight.w900,
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => widget.onSelect(advertisements[selectedPage]),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PageView.builder(
+                      key: ValueKey(
+                        advertisements.map((ad) => ad.id).join('|'),
+                      ),
+                      controller: _pageController,
+                      itemCount: advertisements.length,
+                      onPageChanged: (index) =>
+                          setState(() => _activePage = index),
+                      itemBuilder: (context, index) {
+                        final advertisement =
+                            advertisements[index % advertisements.length];
+                        return Semantics(
+                          label: advertisement.title,
+                          button: true,
+                          child: _AdvertisementImageGallery(
+                            key: ValueKey(advertisement.id),
+                            imageUrls: advertisement.campaignImageUrls,
+                          ),
+                        );
+                      },
+                    ),
+                    if (advertisements.length > 1)
+                      Positioned(
+                        bottom: 8,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (
+                              var index = 0;
+                              index < advertisements.length;
+                              index++
+                            )
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
                                 ),
-                              ),
-                              SizedBox(height: compact ? 5 : 8),
-                              Text(
-                                advertisement.eyebrow,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: compact ? 9 : 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                advertisement.description,
-                                maxLines: compact ? 2 : 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: compact ? 9 : 10,
-                                  height: 1.25,
-                                ),
-                              ),
-                              SizedBox(height: compact ? 5 : 7),
-                              SizedBox(
-                                height: compact ? 27 : 29,
-                                child: FilledButton(
-                                  onPressed: () =>
-                                      widget.onSelect(advertisement),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.black,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
+                                child: Semantics(
+                                  button: true,
+                                  selected: index == selectedPage,
+                                  label: 'Announcement ${index + 1}',
+                                  child: GestureDetector(
+                                    onTap: () => _pageController.animateToPage(
+                                      index,
+                                      duration: const Duration(
+                                        milliseconds: 220,
+                                      ),
+                                      curve: Curves.easeOut,
                                     ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        color: index == selectedPage
+                                            ? Colors.white
+                                            : Colors.white.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
                                   ),
-                                  child: Text(advertisement.buttonLabel),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        _AdvertisementImageGallery(
-                          key: ValueKey(advertisement.id),
-                          imageUrls: advertisement.campaignImageUrls,
-                          width: compact ? 88 : 126,
-                          height: compact ? 110 : 128,
-                          isBuyOneTakeOne: advertisement.isBuyOneTakeOne,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              if (advertisements.length > 1) ...[
-                const SizedBox(height: 5),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var index = 0; index < advertisements.length; index++)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Semantics(
-                          button: true,
-                          selected: index == selectedPage,
-                          label: 'Announcement ${index + 1}',
-                          child: GestureDetector(
-                            onTap: () => _pageController.animateToPage(
-                              index,
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOut,
-                            ),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: index == selectedPage
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
                       ),
                   ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         );
       },
@@ -291,18 +255,9 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
 }
 
 class _AdvertisementImageGallery extends StatefulWidget {
-  const _AdvertisementImageGallery({
-    super.key,
-    required this.imageUrls,
-    required this.width,
-    required this.height,
-    required this.isBuyOneTakeOne,
-  });
+  const _AdvertisementImageGallery({super.key, required this.imageUrls});
 
   final List<String> imageUrls;
-  final double width;
-  final double height;
-  final bool isBuyOneTakeOne;
 
   @override
   State<_AdvertisementImageGallery> createState() =>
@@ -323,90 +278,53 @@ class _AdvertisementImageGalleryState
   @override
   Widget build(BuildContext context) {
     final imageCount = widget.imageUrls.length;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: SizedBox(
-        width: widget.width,
-        height: widget.height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (imageCount == 0)
-              _fallbackImage()
-            else
-              PageView.builder(
-                controller: _pageController,
-                itemCount: imageCount,
-                onPageChanged: (index) => setState(() => _activePage = index),
-                itemBuilder: (context, index) => Image.network(
-                  widget.imageUrls[index],
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => _fallbackImage(),
-                ),
-              ),
-            if (imageCount > 1)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 5,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var index = 0; index < imageCount; index++)
-                      Semantics(
-                        label: 'Campaign image ${index + 1}',
-                        selected: index == _activePage,
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: index == _activePage
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.55),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            if (widget.isBuyOneTakeOne)
-              Positioned(
-                top: 4,
-                left: 3,
-                right: 3,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-                    child: Text(
-                      'Buy One, Take One',
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 7,
-                        fontWeight: FontWeight.w900,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (imageCount == 0)
+          _fallbackImage()
+        else
+          PageView.builder(
+            controller: _pageController,
+            itemCount: imageCount,
+            onPageChanged: (index) => setState(() => _activePage = index),
+            itemBuilder: (context, index) => Image.network(
+              widget.imageUrls[index],
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _fallbackImage(),
+            ),
+          ),
+        if (imageCount > 1)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 5,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var index = 0; index < imageCount; index++)
+                  Semantics(
+                    label: 'Campaign image ${index + 1}',
+                    selected: index == _activePage,
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: index == _activePage
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                ),
-              ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _fallbackImage() => Image.asset(
-    'assets/images/login_drinks.png',
-    width: widget.width,
-    height: widget.height,
-    fit: BoxFit.contain,
-  );
+  Widget _fallbackImage() =>
+      Image.asset('assets/images/login_drinks.png', fit: BoxFit.cover);
 }

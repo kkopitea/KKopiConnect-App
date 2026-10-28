@@ -82,7 +82,7 @@ void main() {
     });
   });
 
-  testWidgets('carousel filters inactive campaigns and shows BOGO badge', (
+  testWidgets('carousel fills card with image and selects campaign on tap', (
     tester,
   ) async {
     final activeCampaign = Advertisement.fromMap('active', {
@@ -99,26 +99,32 @@ void main() {
       'isActive': false,
     });
 
+    Advertisement? selectedAdvertisement;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: AdvertisementCarousel(
             advertisements: Stream.value([activeCampaign, inactiveCampaign]),
-            onSelect: (_) {},
+            onSelect: (advertisement) => selectedAdvertisement = advertisement,
           ),
         ),
       ),
     );
     await tester.pump();
 
-    expect(find.text('Active special'), findsOneWidget);
+    expect(find.text('Active special'), findsNothing);
     expect(find.text('Hidden special'), findsNothing);
-    expect(find.text('Buy One, Take One'), findsOneWidget);
+    expect(find.text('Buy One, Take One'), findsNothing);
+    expect(find.byType(FilledButton), findsNothing);
     expect(find.bySemanticsLabel('Campaign image 1'), findsOneWidget);
     expect(find.bySemanticsLabel('Campaign image 2'), findsOneWidget);
-    expect(tester.widget<Image>(find.byType(Image).first).fit, BoxFit.contain);
+    expect(tester.widget<Image>(find.byType(Image).first).fit, BoxFit.cover);
 
-    await tester.drag(find.byType(PageView).last, const Offset(-180, 0));
+    await tester.tapAt(tester.getCenter(find.byType(PageView).first));
+    await tester.pump();
+    expect(selectedAdvertisement?.id, 'active');
+
+    await tester.drag(find.byType(PageView).last, const Offset(-600, 0));
     await tester.pumpAndSettle();
     expect(
       tester

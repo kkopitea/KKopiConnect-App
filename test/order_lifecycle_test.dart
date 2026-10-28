@@ -120,7 +120,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(placeOrderButton);
       await tester.pumpAndSettle();
-      expect(find.textContaining('Order #KK001'), findsOneWidget);
+      expect(find.textContaining('Pick Up'), findsOneWidget);
       _expectWhiteSystemNavigationBar(tester);
       expect(CartStore.items.value, isEmpty);
       expect(OrdersStore.orders.value, hasLength(1));
@@ -134,11 +134,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('MY ORDERS'), findsOneWidget);
       _expectWhiteSystemNavigationBar(tester);
-      expect(find.textContaining('KK'), findsOneWidget);
+      expect(find.textContaining('KK'), findsNothing);
+      expect(find.text('Pick Up'), findsOneWidget);
 
       await tester.tap(find.text('Select'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('#KK001'));
+      await tester.tap(find.text('Pick Up'));
       await tester.pumpAndSettle();
       expect(find.text('Delete (1)'), findsOneWidget);
 
@@ -179,7 +180,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('#KK009'));
+    await tester.tap(find.text('Pick Up'));
     await tester.pumpAndSettle();
 
     expect(find.text('Delete (0)'), findsOneWidget);
@@ -218,11 +219,11 @@ void main() {
 
     await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('#KK010'));
+    await tester.tap(find.text('Pick Up'));
     await tester.pumpAndSettle();
 
     final card = find
-        .ancestor(of: find.text('#KK010'), matching: find.byType(Material))
+        .ancestor(of: find.text('Pick Up'), matching: find.byType(Material))
         .first;
     expect(tester.widget<Material>(card).color, AppColors.orangeTint);
   });

@@ -186,6 +186,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             Navigator.of(context).pop();
             widget.onNavigateTab?.call(index);
           },
+          onSelectCategory: (categoryId) {
+            Navigator.of(context).pop();
+            setState(() {
+              _activeCategoryId = categoryId;
+              _activeFilter = 'All';
+              _searchQuery = '';
+            });
+          },
         ),
       ),
     );
@@ -240,9 +248,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   void _addProduct(MenuProduct product) {
     CartStore.add(OrderDraft(product: product));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
   }
 
   void _selectAdvertisement(Advertisement advertisement) {

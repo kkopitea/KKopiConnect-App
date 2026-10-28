@@ -8,13 +8,17 @@ import '../data/menu_catalog.dart';
 import '../data/search_analytics_repository.dart';
 import '../widgets/category_icon_circle.dart';
 import '../widgets/cloudinary_image.dart';
-import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.onNavigateTab});
+  const SearchScreen({
+    super.key,
+    required this.onNavigateTab,
+    required this.onSelectCategory,
+  });
 
   final ValueChanged<int> onNavigateTab;
+  final ValueChanged<String> onSelectCategory;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -165,6 +169,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
                   children: [
+                    _popularSearchesSection(),
+                    const SizedBox(height: 16),
                     if (_searchController.text.isNotEmpty) ...[
                       _SectionHeading(
                         icon: Icons.search_rounded,
@@ -296,83 +302,11 @@ class _SearchScreenState extends State<SearchScreen> {
                           final category = menuCategories[index];
                           return _SearchCategoryTile(
                             category: category,
-                            label: category.name,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => CategoryProductsScreen(
-                                  category: category,
-                                  onNavigateTab: widget.onNavigateTab,
-                                ),
-                              ),
-                            ),
+                            label: _displayCategoryName(category.name),
+                            onTap: () => widget.onSelectCategory(category.id),
                           );
                         },
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    const _SectionHeading(
-                      icon: Icons.local_fire_department_outlined,
-                      title: 'Popular Searches',
-                    ),
-                    const SizedBox(height: 5),
-                    StreamBuilder<List<String>>(
-                      stream: _popularSearches,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasError) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              'Popular searches are temporarily unavailable.',
-                              style: TextStyle(color: AppColors.textMuted),
-                            ),
-                          );
-                        }
-                        final terms =
-                            SearchAnalyticsRepository.matchingProductNames(
-                              searchTerms: snapshot.data ?? const <String>[],
-                              productNames: menuProducts.map(
-                                (product) => product.name,
-                              ),
-                            );
-                        if (terms.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              'Search for a drink to help build the popular list.',
-                              style: TextStyle(color: AppColors.textMuted),
-                            ),
-                          );
-                        }
-                        return Column(
-                          children: [
-                            for (final term in terms)
-                              Material(
-                                color: Colors.transparent,
-                                child: ListTile(
-                                  dense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  leading: const Icon(
-                                    Icons.search_rounded,
-                                    size: 19,
-                                  ),
-                                  title: Text(
-                                    term,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                  trailing: const Icon(
-                                    Icons.chevron_right_rounded,
-                                  ),
-                                  onTap: () => _applySearch(term),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
                     ),
                   ],
                 ),
@@ -387,6 +321,15 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
+
+  String _displayCategoryName(String name) => name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .map(
+        (word) => '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+      )
+      .join(' ');
 
   void _submitSearch(String value, {String? popularProductName}) {
     final term = value.trim();
@@ -481,6 +424,66 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
+
+  Widget _popularSearchesSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const _SectionHeading(
+        icon: Icons.local_fire_department_outlined,
+        title: 'Popular Searches',
+      ),
+      const SizedBox(height: 5),
+      StreamBuilder<List<String>>(
+        stream: _popularSearches,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'Popular searches are temporarily unavailable.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            );
+          }
+          final terms = SearchAnalyticsRepository.matchingProductNames(
+            searchTerms: snapshot.data ?? const <String>[],
+            productNames: menuProducts.map((product) => product.name),
+          );
+          if (terms.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'Search for a drink to help build the popular list.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            );
+          }
+          return Column(
+            children: [
+              for (final term in terms)
+                Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    leading: const Icon(Icons.search_rounded, size: 19),
+                    title: Text(
+                      term,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _applySearch(term),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ],
+  );
 }
 
 class _SectionHeading extends StatelessWidget {

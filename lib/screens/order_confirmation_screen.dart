@@ -151,7 +151,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Order ${order.formattedId} · ${AppColors.pesoSymbol}${order.total}',
+                    '${order.fulfillmentLabel} · ${AppColors.pesoSymbol}${order.total}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.textMuted,
@@ -161,7 +161,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    '${order.fulfillment} · ${order.paymentMethod}',
+                    order.paymentMethod,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.textMuted,
@@ -196,9 +196,9 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   TextButton(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).popUntil((route) => route.isFirst),
+                    onPressed: () =>
+                        Navigator.of(context)
+                            .popUntil((route) => route.isFirst),
                     child: const Text(
                       'Back to home',
                       style: TextStyle(

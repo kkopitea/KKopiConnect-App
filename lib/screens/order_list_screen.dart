@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -431,7 +430,7 @@ class _OrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      order.formattedId,
+                      order.fulfillmentLabel,
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textMuted,
@@ -547,7 +546,7 @@ class OrderDetailsScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  current.formattedId,
+                                  current.fulfillmentLabel,
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
@@ -575,7 +574,7 @@ class OrderDetailsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${_formatDate(current.createdAt)} · ${current.fulfillment}',
+                            _formatDate(current.createdAt),
                             style: const TextStyle(color: AppColors.textMuted),
                           ),
                           Text(

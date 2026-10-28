@@ -25,6 +25,18 @@ class PlacedOrder {
 
   String get formattedId => id.startsWith('#') ? id : '#$id';
 
+  String get fulfillmentLabel {
+    switch (fulfillment.trim().toLowerCase()) {
+      case 'pickup':
+      case 'pick up':
+        return 'Pick Up';
+      case 'dine in':
+        return 'Dine In';
+      default:
+        return fulfillment;
+    }
+  }
+
   PlacedOrder copyWith({String? id, String? status}) => PlacedOrder(
     id: id ?? this.id,
     items: items,

@@ -17,6 +17,7 @@ import 'package:kkopiconnect_app/state/orders_store.dart';
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    updateMenuCategories(defaultMenuCategories);
     FavoritesStore.productIds.value = <String>{};
     OrdersStore.orders.value = [];
     FavoritesStore.repositoryForTesting = null;
@@ -51,7 +52,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(home: SearchScreen(onNavigateTab: (_) {})),
+      MaterialApp(
+        home: SearchScreen(onNavigateTab: (_) {}, onSelectCategory: (_) {}),
+      ),
     );
 
     expect(find.text('Recent Searches'), findsOneWidget);
@@ -65,11 +68,98 @@ void main() {
     expect(find.text('Caramel Caffuccino'), findsOneWidget);
   });
 
+  testWidgets(
+    'each search category circle selects its category in the menu section',
+    (tester) async {
+      updateMenuCategories([
+        for (final category in defaultMenuCategories)
+          if (category.id == 'coffee')
+            MenuCategory(
+              id: category.id,
+              name: 'coffee',
+              icon: category.icon,
+              sortOrder: category.sortOrder,
+            )
+          else
+            category,
+      ]);
+      await tester.pumpWidget(const MaterialApp(home: CategoriesScreen()));
+      await tester.pumpAndSettle();
+
+      const categories = [
+        ('Coffee', 'coffee'),
+        ('Milk Tea', 'milktea'),
+        ('Frappe', 'frappe'),
+        ('Fruit Tea', 'fruit_tea'),
+        ('Snacks', 'snacks'),
+      ];
+
+      for (final (label, categoryId) in categories) {
+        await tester.tap(find.byTooltip('Search products'));
+        await tester.pumpAndSettle();
+
+        final searchCircle = find.text(label).last;
+        await tester.ensureVisible(searchCircle);
+        await tester.tap(searchCircle);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == label &&
+                widget.properties.selected == true,
+          ),
+          findsOneWidget,
+          reason: '$label should be selected in the Categories screen',
+        );
+        expect(
+          find.text('Oreo Smoothie'),
+          categoryId == 'frappe' ? findsOneWidget : findsNothing,
+        );
+      }
+    },
+  );
+
+  testWidgets('popular searches stay above results after opening a product', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SearchScreen(onNavigateTab: (_) {}, onSelectCategory: (_) {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'coffee');
+    await tester.pumpAndSettle();
+
+    final popularHeading = find.text('Popular Searches');
+    final resultsHeading = find.text('Search results');
+    expect(popularHeading, findsOneWidget);
+    expect(
+      tester.getTopLeft(popularHeading).dy,
+      lessThan(tester.getTopLeft(resultsHeading).dy),
+    );
+
+    await tester.tap(find.text('Iced Americano Caramel').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(popularHeading, findsOneWidget);
+    expect(
+      tester.getTopLeft(popularHeading).dy,
+      lessThan(tester.getTopLeft(resultsHeading).dy),
+    );
+  });
+
   testWidgets('recent searches are saved on the device and reloaded', (
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(home: SearchScreen(onNavigateTab: (_) {})),
+      MaterialApp(
+        home: SearchScreen(onNavigateTab: (_) {}, onSelectCategory: (_) {}),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Mango Tea');
@@ -81,7 +171,9 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(
-      MaterialApp(home: SearchScreen(onNavigateTab: (_) {})),
+      MaterialApp(
+        home: SearchScreen(onNavigateTab: (_) {}, onSelectCategory: (_) {}),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.text('Mango Tea'), findsOneWidget);
