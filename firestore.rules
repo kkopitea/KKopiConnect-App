@@ -317,6 +317,37 @@ service cloud.firestore {
             : -1;
       }
 
+      function validUpdatedSummary(data, productId) {
+        return data.keys().hasOnly([
+            'productId', 'ratingCount', 'ratingTotal',
+            'ratingAverage', 'updatedAt'
+          ])
+          && data.productId == productId
+          && data.ratingCount is int
+          && data.ratingCount >= 1
+          && data.ratingTotal is int
+          && data.ratingTotal >= data.ratingCount
+          && data.ratingTotal <= data.ratingCount * 5
+          && data.ratingAverage is number
+          && data.ratingAverage * data.ratingCount
+            >= data.ratingTotal - 0.000001
+          && data.ratingAverage * data.ratingCount
+            <= data.ratingTotal + 0.000001;
+      }
+
+      function validStoredSummary(data) {
+        return data.ratingCount is number
+          && data.ratingCount >= 1
+          && data.ratingCount % 1 == 0
+          && storedRatingTotal(data) >= data.ratingCount - 0.000001
+          && storedRatingTotal(data) <= data.ratingCount * 5 + 0.000001;
+      }
+
+      function previousRating(productId, uid) {
+        let path = ratingPath(productId, uid);
+        return exists(path) ? get(path).data.rating : 0;
+      }
+
       allow read: if true;
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
@@ -334,83 +365,24 @@ service cloud.firestore {
         && getAfter(ratingPath(productId, request.auth.uid)).data.rating
           == request.resource.data.ratingTotal;
       allow update: if signedIn()
-        && request.resource.data.keys().hasOnly([
-          'productId', 'ratingCount', 'ratingTotal',
-          'ratingAverage', 'updatedAt'
-        ])
-        && request.resource.data.productId == productId
-        && request.resource.data.ratingCount is int
-        && request.resource.data.ratingCount >= 1
-        && request.resource.data.ratingTotal is int
-        && request.resource.data.ratingTotal
-          >= request.resource.data.ratingCount
-        && request.resource.data.ratingTotal
-          <= request.resource.data.ratingCount * 5
-        && request.resource.data.ratingAverage is number
-        && request.resource.data.ratingAverage
-          >= request.resource.data.ratingTotal
-            / request.resource.data.ratingCount - 0.000001
-        && request.resource.data.ratingAverage
-          <= request.resource.data.ratingTotal
-            / request.resource.data.ratingCount + 0.000001
-        && resource.data.ratingCount is number
-        && resource.data.ratingCount >= 1
-        && resource.data.ratingCount % 1 == 0
-        && storedRatingTotal(resource.data)
-          >= resource.data.ratingCount - 0.000001
-        && storedRatingTotal(resource.data)
-          <= resource.data.ratingCount * 5 + 0.000001
+        && validUpdatedSummary(request.resource.data, productId)
+        && validStoredSummary(resource.data)
         && existsAfter(ratingPath(productId, request.auth.uid))
         && getAfter(ratingPath(productId, request.auth.uid)).data.rating >= 1
         && getAfter(ratingPath(productId, request.auth.uid)).data.rating <= 5
-        && (
-          (
-            !exists(ratingPath(productId, request.auth.uid))
-            && request.resource.data.ratingCount
-              == resource.data.ratingCount + 1
-            && request.resource.data.ratingTotal
-              >= storedRatingTotal(resource.data)
-                + getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                - 0.000001
-            && request.resource.data.ratingTotal
-              <= storedRatingTotal(resource.data)
-                + getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                + 0.000001
-          )
-          ||
-          (
-            exists(ratingPath(productId, request.auth.uid))
-            && (
-              (
-                get(ratingPath(productId, request.auth.uid)).data.rating
-                  == getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                && request.resource.data.ratingCount
-                  == resource.data.ratingCount
-                && request.resource.data.ratingTotal
-                  >= storedRatingTotal(resource.data) - 0.000001
-                && request.resource.data.ratingTotal
-                  <= storedRatingTotal(resource.data) + 0.000001
-              )
-              ||
-              (
-                get(ratingPath(productId, request.auth.uid)).data.rating
-                  != getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                && request.resource.data.ratingCount
-                  == resource.data.ratingCount
-                && request.resource.data.ratingTotal
-                  >= storedRatingTotal(resource.data)
-                    - get(ratingPath(productId, request.auth.uid)).data.rating
-                    + getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                    - 0.000001
-                && request.resource.data.ratingTotal
-                  <= storedRatingTotal(resource.data)
-                    - get(ratingPath(productId, request.auth.uid)).data.rating
-                    + getAfter(ratingPath(productId, request.auth.uid)).data.rating
-                    + 0.000001
-              )
-            )
-          )
-        );
+        && request.resource.data.ratingCount
+          == resource.data.ratingCount
+            + (exists(ratingPath(productId, request.auth.uid)) ? 0 : 1)
+        && request.resource.data.ratingTotal
+          >= storedRatingTotal(resource.data)
+            - previousRating(productId, request.auth.uid)
+            + getAfter(ratingPath(productId, request.auth.uid)).data.rating
+            - 0.000001
+        && request.resource.data.ratingTotal
+          <= storedRatingTotal(resource.data)
+            - previousRating(productId, request.auth.uid)
+            + getAfter(ratingPath(productId, request.auth.uid)).data.rating
+            + 0.000001;
       allow delete: if false;
 
       match /users/{uid} {
