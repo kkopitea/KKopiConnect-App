@@ -4,32 +4,38 @@ import '../app_colors.dart';
 import '../data/advertisement.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
+import '../services/advertisement_navigation.dart';
 import '../state/cart_store.dart';
 import '../state/product_ratings_store.dart';
 import 'cart_screen.dart';
-import 'category_products_screen.dart';
 import 'product_detail_screen.dart';
 import 'search_screen.dart';
 import '../widgets/advertisement_carousel.dart';
+import '../widgets/category_selection_icon.dart';
 import '../widgets/curved_content_page.dart';
 import '../widgets/menu_product_card.dart';
+import '../widgets/menu_products_status_banner.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({
     super.key,
     this.onNavigateTab,
     this.selectedCategoryId,
+    this.advertisements,
+    this.onRefresh,
   });
 
   final ValueChanged<int>? onNavigateTab;
   final String? selectedCategoryId;
+  final Stream<List<Advertisement>>? advertisements;
+  final Future<void> Function()? onRefresh;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  static const _filters = ['All', 'Best Sellers', 'New', 'Classic'];
+  static const _filters = ['All', 'Best Sellers', 'New'];
   String _activeFilter = 'All';
   String? _activeCategoryId;
   String _searchQuery = '';
@@ -80,7 +86,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     return matchingCategory.where((product) {
       return switch (_activeFilter) {
         'New' => product.isNew,
-        'Classic' => product.isClassic,
         _ => true,
       };
     }).toList();
@@ -137,45 +142,57 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
-              children: [
-                AdvertisementCarousel(onSelect: _selectAdvertisement),
-                const SizedBox(height: 10),
-                if (_searchQuery.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text('Search: $_searchQuery')),
-                        TextButton(
-                          onPressed: () => setState(() => _searchQuery = ''),
-                          child: const Text('Clear'),
-                        ),
-                      ],
-                    ),
+            child: RefreshIndicator(
+              onRefresh: widget.onRefresh ?? _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+                children: [
+                  AdvertisementCarousel(
+                    advertisements: widget.advertisements,
+                    onSelect: _selectAdvertisement,
                   ),
-                if (products.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: Text('No products found')),
-                  )
-                else
-                  for (final product in products)
+                  const SizedBox(height: 10),
+                  const MenuProductsStatusBanner(),
+                  if (_searchQuery.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: MenuProductCard(
-                        product: product,
-                        onTap: () => _openProduct(product),
-                        onAdd: () => _addProduct(product),
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text('Search: $_searchQuery')),
+                          TextButton(
+                            onPressed: () => setState(() => _searchQuery = ''),
+                            child: const Text('Clear'),
+                          ),
+                        ],
                       ),
                     ),
-              ],
+                  if (products.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: Center(child: Text('No products found')),
+                    )
+                  else
+                    for (final product in products)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: MenuProductCard(
+                          product: product,
+                          onTap: () => _openProduct(product),
+                          onAdd: () => _addProduct(product),
+                        ),
+                      ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _refresh() async {
+    if (mounted) setState(() {});
   }
 
   void _openSearch() {
@@ -186,6 +203,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             Navigator.of(context).pop();
             widget.onNavigateTab?.call(index);
           },
+          onProductNavigateTab: widget.onNavigateTab,
           onSelectCategory: (categoryId) {
             Navigator.of(context).pop();
             setState(() {
@@ -194,42 +212,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               _searchQuery = '';
             });
           },
-        ),
-      ),
-    );
-  }
-
-  void _showCategories() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text(
-                'Browse categories',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-            ),
-            for (final category in menuCategories)
-              ListTile(
-                leading: Icon(category.displayIcon, color: AppColors.orange),
-                title: Text(category.name),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => CategoryProductsScreen(
-                        category: category,
-                        onNavigateTab: widget.onNavigateTab,
-                      ),
-                    ),
-                  );
-                },
-              ),
-          ],
         ),
       ),
     );
@@ -248,53 +230,24 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   void _addProduct(MenuProduct product) {
     CartStore.add(OrderDraft(product: product));
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
   }
 
   void _selectAdvertisement(Advertisement advertisement) {
-    final products = advertisement.selectedProductIds
-        .map(
-          (id) => menuProducts.where((product) => product.id == id).firstOrNull,
-        )
-        .whereType<MenuProduct>()
-        .toList(growable: false);
-    if (products.isEmpty) {
-      _showCategories();
-    } else if (products.length == 1) {
-      _openProduct(products.first);
-    } else {
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (sheetContext) => SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Text(
-                  advertisement.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              for (final product in products)
-                ListTile(
-                  title: Text(product.name),
-                  subtitle: Text('${AppColors.pesoSymbol}${product.price}'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _openProduct(product);
-                  },
-                ),
-            ],
-          ),
-        ),
-      );
-    }
+    AdvertisementNavigation.open(
+      context,
+      advertisement,
+      onNavigateTab: widget.onNavigateTab,
+      onSelectCategory: (categoryId) {
+        setState(() {
+          _activeCategoryId = categoryId;
+          _activeFilter = 'All';
+          _searchQuery = '';
+        });
+      },
+    );
   }
 }
 
@@ -372,6 +325,7 @@ class _CategoryCarousel extends StatelessWidget {
               children: [
                 _CategoryTab(
                   label: 'All',
+                  categoryId: null,
                   icon: Icons.grid_view_rounded,
                   selected: selectedCategoryId == null,
                   onTap: () => onSelected(null),
@@ -379,6 +333,7 @@ class _CategoryCarousel extends StatelessWidget {
                 for (final category in menuCategories)
                   _CategoryTab(
                     label: _categoryLabel(category),
+                    categoryId: category.id,
                     icon: category.displayIcon,
                     selected: selectedCategoryId == category.id,
                     onTap: () => onSelected(category.id),
@@ -392,7 +347,6 @@ class _CategoryCarousel extends StatelessWidget {
   }
 
   String _categoryLabel(MenuCategory category) {
-    if (category.id == 'milktea') return 'Milk Tea';
     return category.name
         .split(RegExp(r'\s+'))
         .map(
@@ -407,12 +361,14 @@ class _CategoryCarousel extends StatelessWidget {
 class _CategoryTab extends StatelessWidget {
   const _CategoryTab({
     required this.label,
+    required this.categoryId,
     required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
+  final String? categoryId;
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
@@ -438,7 +394,12 @@ class _CategoryTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 23, color: color),
+              CategorySelectionIcon(
+                categoryId: categoryId,
+                fallbackIcon: icon,
+                size: 19,
+                color: color,
+              ),
               const SizedBox(height: 3),
               Text(
                 label,

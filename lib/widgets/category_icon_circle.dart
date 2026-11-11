@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import 'category_selection_icon.dart';
 
 class CategoryIconCircle extends StatelessWidget {
-  const CategoryIconCircle({super.key, required this.icon, required this.size});
+  const CategoryIconCircle({
+    super.key,
+    required this.categoryId,
+    required this.fallbackIcon,
+    required this.size,
+  });
 
-  final IconData icon;
+  final String categoryId;
+  final IconData fallbackIcon;
   final double size;
 
   @override
@@ -17,7 +24,12 @@ class CategoryIconCircle extends StatelessWidget {
         color: AppColors.orange,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: Colors.white, size: size * 0.52),
+      child: CategorySelectionIcon(
+        categoryId: categoryId,
+        fallbackIcon: fallbackIcon,
+        size: 28,
+        color: Colors.white,
+      ),
     );
   }
 }

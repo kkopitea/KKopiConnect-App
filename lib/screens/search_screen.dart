@@ -15,10 +15,12 @@ class SearchScreen extends StatefulWidget {
     super.key,
     required this.onNavigateTab,
     required this.onSelectCategory,
+    this.onProductNavigateTab,
   });
 
   final ValueChanged<int> onNavigateTab;
   final ValueChanged<String> onSelectCategory;
+  final ValueChanged<int>? onProductNavigateTab;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -419,7 +421,7 @@ class _SearchScreenState extends State<SearchScreen> {
       MaterialPageRoute<void>(
         builder: (_) => ProductDetailScreen(
           product: product,
-          onNavigateTab: widget.onNavigateTab,
+          onNavigateTab: widget.onProductNavigateTab ?? widget.onNavigateTab,
         ),
       ),
     );
@@ -539,11 +541,16 @@ class _SearchCategoryTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(36),
         child: Column(
           children: [
-            CategoryIconCircle(icon: category.displayIcon, size: 56),
+            CategoryIconCircle(
+              categoryId: category.id,
+              fallbackIcon: category.displayIcon,
+              size: 56,
+            ),
             const SizedBox(height: 4),
             Text(
               label,
-              maxLines: 1,
+              maxLines: 2,
+              textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),

@@ -55,8 +55,8 @@ void main() {
   });
 
   test('admin-managed category, notification, and payment schemas parse', () {
-    final category = MenuCategory.fromFirestore('fruit_tea', {
-      'name': 'Fruit Tea',
+    final category = MenuCategory.fromFirestore('fruit_teas', {
+      'name': 'Fruit Teas',
       'iconKey': 'fruitTea',
       'sortOrder': 4,
     });
@@ -67,6 +67,8 @@ void main() {
       'isActive': true,
       'sortOrder': 1,
       'iconKey': 'coffee',
+      'imageUrl': ' https://example.com/update.png ',
+      'version': '2.1.0',
     });
     final paymentMethod = PaymentMethod.fromFirestore('gcash', {
       'name': 'GCash',
@@ -75,11 +77,31 @@ void main() {
       'instructions': 'Pay with GCash.',
     });
 
-    expect(category.name, 'Fruit Tea');
+    expect(category.name, 'Fruit Teas');
     expect(category.sortOrder, 4);
     expect(notification?.type, 'System');
     expect(notification?.isActive, isTrue);
+    expect(notification?.imageUrl, 'https://example.com/update.png');
+    expect(notification?.version, '2.1.0');
     expect(paymentMethod?.name, 'GCash');
     expect(paymentMethod?.instructions, 'Pay with GCash.');
+  });
+
+  test('promotion notifications accept description as their message', () {
+    final notification = AppNotification.fromFirestore('new-promotion', {
+      'title': 'New promotion',
+      'description': 'Save on iced lattes this week.',
+      'type': 'promotion',
+      'isActive': true,
+      'sortOrder': 'first',
+      'iconKey': 42,
+    });
+
+    expect(notification?.title, 'New promotion');
+    expect(notification?.message, 'Save on iced lattes this week.');
+    expect(notification?.type, 'Promotion');
+    expect(notification?.isActive, isTrue);
+    expect(notification?.sortOrder, 0);
+    expect(notification?.iconKey, 'notifications');
   });
 }

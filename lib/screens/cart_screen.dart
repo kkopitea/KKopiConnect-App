@@ -102,194 +102,216 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     return CurvedContentPage(
       title: 'MY CART',
-      body: ValueListenableBuilder<List<OrderDraft>>(
-        valueListenable: CartStore.items,
-        builder: (context, items, _) {
-          if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 44,
-                      color: AppColors.orange,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Your cart is empty',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Choose a drink from the menu to get started.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 14),
-                    FilledButton(
-                      onPressed: () {
-                        if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(1);
-                        } else if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const CategoriesScreen(),
+      body: RefreshIndicator(
+        onRefresh: _refreshCart,
+        child: ValueListenableBuilder<List<OrderDraft>>(
+          valueListenable: CartStore.items,
+          builder: (context, items, _) {
+            if (items.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.65,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 44,
+                              color: AppColors.orange,
                             ),
-                          );
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.orange,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Browse menu'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final selectedItems = [
-            for (var index = 0; index < items.length; index++)
-              if (_selectedIndexes.contains(index)) items[index],
-          ];
-          final subtotal = selectedItems.fold<int>(
-            0,
-            (sum, item) => sum + item.total,
-          );
-          final count = selectedItems.fold<int>(
-            0,
-            (sum, item) => sum + item.quantity,
-          );
-          return Column(
-            children: [
-              CheckboxListTile(
-                value:
-                    items.isNotEmpty && _selectedIndexes.length == items.length,
-                tristate: true,
-                title: const Text(
-                  'Select all for order',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-                activeColor: AppColors.orange,
-                onChanged: (selected) {
-                  setState(() {
-                    _selectedIndexes
-                      ..clear()
-                      ..addAll(
-                        selected == true
-                            ? List<int>.generate(items.length, (index) => index)
-                            : const <int>[],
-                      );
-                  });
-                },
-              ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(14),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) => _CartItemTile(
-                    draft: items[index],
-                    selected: _selectedIndexes.contains(index),
-                    onSelectionChanged: (selected) =>
-                        _toggleSelection(index, selected),
-                    onQuantityChanged: (quantity) =>
-                        CartStore.updateQuantity(index, quantity),
-                    onRemove: () => _removeAt(index),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: const BoxDecoration(color: Colors.white),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Subtotal ($count ${count == 1 ? 'item' : 'items'})',
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 12,
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Your cart is empty',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${AppColors.pesoSymbol}$subtotal',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Total',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          Text(
-                            '${AppColors.pesoSymbol}$subtotal',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 17,
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Choose a drink from the menu to get started.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textMuted),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: selectedItems.isEmpty
-                              ? null
-                              : () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) =>
-                                        widget.checkoutBuilder?.call(
-                                          List.unmodifiable(selectedItems),
-                                        ) ??
-                                        OrderTypeScreen(
-                                          drafts: List.unmodifiable(
-                                            selectedItems,
-                                          ),
-                                          onNavigateTab: widget.onNavigateTab,
-                                        ),
-                                  ),
-                                ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.orange,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text(
-                            'Proceed',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
+                            const SizedBox(height: 14),
+                            FilledButton(
+                              onPressed: () {
+                                if (widget.onNavigateTab != null) {
+                                  widget.onNavigateTab!(1);
+                                } else if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const CategoriesScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.orange,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Browse menu'),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final selectedItems = [
+              for (var index = 0; index < items.length; index++)
+                if (_selectedIndexes.contains(index)) items[index],
+            ];
+            final subtotal = selectedItems.fold<int>(
+              0,
+              (sum, item) => sum + item.total,
+            );
+            final count = selectedItems.fold<int>(
+              0,
+              (sum, item) => sum + item.quantity,
+            );
+            return Column(
+              children: [
+                CheckboxListTile(
+                  value:
+                      items.isNotEmpty &&
+                      _selectedIndexes.length == items.length,
+                  tristate: true,
+                  title: const Text(
+                    'Select all for order',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: AppColors.orange,
+                  onChanged: (selected) {
+                    setState(() {
+                      _selectedIndexes
+                        ..clear()
+                        ..addAll(
+                          selected == true
+                              ? List<int>.generate(
+                                  items.length,
+                                  (index) => index,
+                                )
+                              : const <int>[],
+                        );
+                    });
+                  },
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(14),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) => _CartItemTile(
+                      draft: items[index],
+                      selected: _selectedIndexes.contains(index),
+                      onSelectionChanged: (selected) =>
+                          _toggleSelection(index, selected),
+                      onQuantityChanged: (quantity) =>
+                          CartStore.updateQuantity(index, quantity),
+                      onRemove: () => _removeAt(index),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  decoration: const BoxDecoration(color: Colors.white),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Subtotal ($count ${count == 1 ? 'item' : 'items'})',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '${AppColors.pesoSymbol}$subtotal',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            Text(
+                              '${AppColors.pesoSymbol}$subtotal',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 17,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: FilledButton(
+                            onPressed: selectedItems.isEmpty
+                                ? null
+                                : () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) =>
+                                          widget.checkoutBuilder?.call(
+                                            List.unmodifiable(selectedItems),
+                                          ) ??
+                                          OrderTypeScreen(
+                                            drafts: List.unmodifiable(
+                                              selectedItems,
+                                            ),
+                                            onNavigateTab: widget.onNavigateTab,
+                                          ),
+                                    ),
+                                  ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text(
+                              'Proceed',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
+  }
+
+  Future<void> _refreshCart() async {
+    if (mounted) _cartChanged();
   }
 }
 

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Advertisement {
   const Advertisement({
     this.id = '',
@@ -12,6 +14,10 @@ class Advertisement {
     this.imageUrls = const [],
     this.productIds = const [],
     this.isBuyOneTakeOne = false,
+    this.startAt,
+    this.endAt,
+    this.buttonActionType = '',
+    this.buttonTarget = '',
   });
 
   final String id;
@@ -26,6 +32,24 @@ class Advertisement {
   final List<String> imageUrls;
   final List<String> productIds;
   final bool isBuyOneTakeOne;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final String buttonActionType;
+  final String buttonTarget;
+
+  String get effectiveButtonActionType {
+    final action = buttonActionType.trim().toLowerCase();
+    if (const {
+      'product',
+      'category',
+      'menu',
+      'cart',
+      'orders',
+    }.contains(action)) {
+      return action;
+    }
+    return productIdsForNavigation.isNotEmpty ? 'product' : 'menu';
+  }
 
   List<String> get campaignImageUrls {
     final urls = imageUrls
@@ -47,6 +71,20 @@ class Advertisement {
     return legacyId.isEmpty ? const [] : [legacyId];
   }
 
+  List<String> get productIdsForNavigation {
+    final primaryId = productId.trim();
+    return [
+      if (primaryId.isNotEmpty) primaryId,
+      ...selectedProductIds.where((id) => id != primaryId),
+    ];
+  }
+
+  bool isAvailableAt(DateTime dateTime) =>
+      isActive &&
+      !(startAt != null && endAt != null && !endAt!.isAfter(startAt!)) &&
+      (startAt == null || !dateTime.isBefore(startAt!)) &&
+      (endAt == null || dateTime.isBefore(endAt!));
+
   Advertisement copyWith({bool? isActive}) => Advertisement(
     id: id,
     title: title,
@@ -60,6 +98,10 @@ class Advertisement {
     imageUrls: imageUrls,
     productIds: productIds,
     isBuyOneTakeOne: isBuyOneTakeOne,
+    startAt: startAt,
+    endAt: endAt,
+    buttonActionType: buttonActionType,
+    buttonTarget: buttonTarget,
   );
 
   Map<String, Object?> toMap() => {
@@ -74,6 +116,11 @@ class Advertisement {
     'imageUrls': imageUrls,
     'productIds': productIds,
     'isBuyOneTakeOne': isBuyOneTakeOne,
+    'startAt': startAt == null ? null : Timestamp.fromDate(startAt!),
+    'endAt': endAt == null ? null : Timestamp.fromDate(endAt!),
+    if (buttonActionType.trim().isNotEmpty)
+      'buttonActionType': buttonActionType.trim(),
+    if (buttonTarget.trim().isNotEmpty) 'buttonTarget': buttonTarget.trim(),
   };
 
   factory Advertisement.fromMap(String id, Map<String, dynamic> map) {
@@ -100,6 +147,21 @@ class Advertisement {
       imageUrls: readStringList(map['imageUrls']),
       productIds: readStringList(map['productIds']),
       isBuyOneTakeOne: map['isBuyOneTakeOne'] == true,
+      startAt: _parseDate(map['startAt']),
+      endAt: _parseDate(map['endAt']),
+      buttonActionType: map['buttonActionType'] is String
+          ? (map['buttonActionType'] as String).trim()
+          : '',
+      buttonTarget: map['buttonTarget'] is String
+          ? (map['buttonTarget'] as String).trim()
+          : '',
     );
   }
+
+  static DateTime? _parseDate(Object? value) => switch (value) {
+    Timestamp timestamp => timestamp.toDate(),
+    DateTime dateTime => dateTime,
+    String text => DateTime.tryParse(text),
+    _ => null,
+  };
 }

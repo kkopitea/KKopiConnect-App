@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../data/drink_extra.dart';
+import '../data/drink_extra_repository.dart';
 import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
@@ -14,10 +18,12 @@ class CustomizeDrinkScreen extends StatefulWidget {
     super.key,
     required this.draft,
     this.onNavigateTab,
+    this.addOnOptions,
   });
 
   final OrderDraft draft;
   final ValueChanged<int>? onNavigateTab;
+  final Stream<List<DrinkExtra>>? addOnOptions;
 
   @override
   State<CustomizeDrinkScreen> createState() => _CustomizeDrinkScreenState();
@@ -27,6 +33,12 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
   late int quantity;
   late String size;
   late int sizePrice;
+  late final Set<String> _selectedAddOns;
+  late final Map<String, int> _addOnUnitPrices;
+  StreamSubscription<List<DrinkExtra>>? _addOnsSubscription;
+  List<DrinkExtra> _availableAddOns = const [];
+  Object? _addOnsError;
+  bool _isLoadingAddOns = false;
   String sugar = '50%';
   static const _sugarOptions = [
     ('0%', '0% sugar'),
@@ -42,6 +54,94 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
     size = widget.draft.size;
     sizePrice = widget.draft.unitPrice;
     sugar = widget.draft.sugar;
+    _selectedAddOns = Set.of(widget.draft.addOns);
+    _addOnUnitPrices = Map.of(widget.draft.addOnUnitPrices);
+    if (_supportsAddOns(widget.draft.product)) {
+      _loadAddOns();
+    } else {
+      _selectedAddOns.clear();
+      _addOnUnitPrices.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _addOnsSubscription?.cancel();
+    super.dispose();
+  }
+
+  bool _supportsAddOns(MenuProduct product) =>
+      product.addOns.isNotEmpty ||
+      product.categoryId == 'non_caffeine' ||
+      product.categoryIds.contains('non_caffeine');
+
+  void _loadAddOns() {
+    _addOnsSubscription?.cancel();
+    final productAddOns = widget.draft.product.addOns;
+    if (productAddOns.isNotEmpty) {
+      final availableNames = productAddOns.map((option) => option.name).toSet();
+      setState(() {
+        _availableAddOns = productAddOns;
+        _selectedAddOns.retainAll(availableNames);
+        _addOnUnitPrices.removeWhere(
+          (name, _) => !availableNames.contains(name),
+        );
+        _isLoadingAddOns = false;
+        _addOnsError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingAddOns = true;
+      _addOnsError = null;
+    });
+    try {
+      _addOnsSubscription =
+          (widget.addOnOptions ?? DrinkExtraRepository().watchAddOns()).listen(
+            (options) {
+              if (!mounted) return;
+              final availableNames = options
+                  .map((option) => option.name)
+                  .toSet();
+              setState(() {
+                _availableAddOns = options;
+                _selectedAddOns.retainAll(availableNames);
+                _addOnUnitPrices.removeWhere(
+                  (name, _) => !availableNames.contains(name),
+                );
+                _isLoadingAddOns = false;
+                _addOnsError = null;
+              });
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              debugPrint('Unable to load drink add-ons: $error\n$stackTrace');
+              if (!mounted) return;
+              setState(() {
+                _isLoadingAddOns = false;
+                _addOnsError = error;
+              });
+            },
+          );
+    } catch (error, stackTrace) {
+      debugPrint('Unable to watch drink add-ons: $error\n$stackTrace');
+      setState(() {
+        _isLoadingAddOns = false;
+        _addOnsError = error;
+      });
+    }
+  }
+
+  void _toggleAddOn(DrinkExtra option, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedAddOns.add(option.name);
+        _addOnUnitPrices[option.name] = option.price;
+      } else {
+        _selectedAddOns.remove(option.name);
+        _addOnUnitPrices.remove(option.name);
+      }
+    });
   }
 
   @override
@@ -56,6 +156,8 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
       size: size,
       sizePrice: sizePrice,
       sugar: sugar,
+      addOns: _supportsAddOns(product) ? _selectedAddOns : const {},
+      addOnUnitPrices: _supportsAddOns(product) ? _addOnUnitPrices : const {},
     );
     final total = currentDraft.total;
     return CurvedContentPage(
@@ -79,6 +181,8 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
             size = firstSize.$1;
             sizePrice = product.price + firstSize.$2;
             sugar = '50%';
+            _selectedAddOns.clear();
+            _addOnUnitPrices.clear();
           }),
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -106,6 +210,10 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
                   selected: sugar,
                   onSelect: (value) => setState(() => sugar = value),
                 ),
+                if (_supportsAddOns(product)) ...[
+                  const SizedBox(height: 14),
+                  _buildAddOnsSection(),
+                ],
               ],
             ),
           ),
@@ -189,6 +297,59 @@ class _CustomizeDrinkScreenState extends State<CustomizeDrinkScreen> {
       options.add(('100%', '100% sugar'));
     }
     return options;
+  }
+
+  Widget _buildAddOnsSection() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: _panelDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('2. Add-ons', style: _sectionTitle),
+          const SizedBox(height: 8),
+          if (_isLoadingAddOns)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_addOnsError != null)
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Could not load add-ons. Please try again.',
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
+                ),
+                TextButton(onPressed: _loadAddOns, child: const Text('Retry')),
+              ],
+            )
+          else if (_availableAddOns.isEmpty)
+            const Text(
+              'No add-ons are available right now.',
+              style: TextStyle(color: AppColors.textMuted),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final option in _availableAddOns)
+                  FilterChip(
+                    label: Text(
+                      '${option.name} · ${AppColors.pesoSymbol}${option.price}',
+                    ),
+                    selected: _selectedAddOns.contains(option.name),
+                    selectedColor: AppColors.orangeTint,
+                    checkmarkColor: AppColors.orange,
+                    onSelected: (selected) => _toggleAddOn(option, selected),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 }
 

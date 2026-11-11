@@ -31,137 +31,167 @@ class FavoritesScreen extends StatelessWidget {
                 onNavigateTab!(index);
               },
             ),
-      body: AnimatedBuilder(
-        animation: Listenable.merge([
-          FavoritesStore.productIds,
-          FavoritesStore.isLoading,
-          FavoritesStore.loadError,
-        ]),
-        builder: (context, _) {
-          final loadError = FavoritesStore.loadError.value;
-          if (loadError != null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  loadError,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textMuted),
-                ),
-              ),
-            );
-          }
-          if (FavoritesStore.isLoading.value) {
-            return const Center(child: CircularProgressIndicator.adaptive());
-          }
-          final products = menuProducts
-              .where(
-                (product) =>
-                    FavoritesStore.productIds.value.contains(product.id),
-              )
-              .toList();
-          if (products.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.favorite_border_rounded,
-                      size: 42,
-                      color: AppColors.orange,
+      body: RefreshIndicator(
+        onRefresh: FavoritesStore.refresh,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([
+            FavoritesStore.productIds,
+            FavoritesStore.isLoading,
+            FavoritesStore.loadError,
+          ]),
+          builder: (context, _) {
+            final loadError = FavoritesStore.loadError.value;
+            if (loadError != null) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.65,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          loadError,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.textMuted),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No favorites yet',
-                      style: TextStyle(
-                        fontSize: 17,
+                  ),
+                ],
+              );
+            }
+            if (FavoritesStore.isLoading.value) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.65,
+                    child: const Center(
+                      child: CircularProgressIndicator.adaptive(),
+                    ),
+                  ),
+                ],
+              );
+            }
+            final products = menuProducts
+                .where(
+                  (product) =>
+                      FavoritesStore.productIds.value.contains(product.id),
+                )
+                .toList();
+            if (products.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.65,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.favorite_border_rounded,
+                              size: 42,
+                              color: AppColors.orange,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No favorites yet',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Tap the heart on a drink to save it here.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton(
+                              onPressed: onBrowseMenu,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.orange,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Browse menu'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(14),
+              itemCount: products.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final product = products[index];
+                return Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(9),
+                      child: CloudinaryImage(
+                        url: product.imageUrl,
+                        fallbackAsset: product.imageAsset,
+                        width: 54,
+                        height: 54,
+                      ),
+                    ),
+                    title: Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Tap the heart on a drink to save it here.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 14),
-                    FilledButton(
-                      onPressed: onBrowseMenu,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.orange,
-                        foregroundColor: Colors.white,
+                    subtitle: Text(
+                      '${AppColors.pesoSymbol}${product.price}',
+                      style: const TextStyle(
+                        color: AppColors.orange,
+                        fontWeight: FontWeight.w700,
                       ),
-                      child: const Text('Browse menu'),
                     ),
-                  ],
-                ),
-              ),
+                    trailing: IconButton(
+                      tooltip: 'Remove from favorites',
+                      onPressed: () => _removeFavorite(context, product.id),
+                      icon: const Icon(
+                        Icons.favorite_rounded,
+                        color: AppColors.orange,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ProductDetailScreen(
+                          product: product,
+                          onNavigateTab: onNavigateTab,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(14),
-            itemCount: products.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final product = products[index];
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: CloudinaryImage(
-                      url: product.imageUrl,
-                      fallbackAsset: product.imageAsset,
-                      width: 54,
-                      height: 54,
-                    ),
-                  ),
-                  title: Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${AppColors.pesoSymbol}${product.price}',
-                    style: const TextStyle(
-                      color: AppColors.orange,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Remove from favorites',
-                    onPressed: () => _removeFavorite(context, product.id),
-                    icon: const Icon(
-                      Icons.favorite_rounded,
-                      color: AppColors.orange,
-                    ),
-                  ),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ProductDetailScreen(
-                        product: product,
-                        onNavigateTab: onNavigateTab,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+          },
+        ),
       ),
     );
   }

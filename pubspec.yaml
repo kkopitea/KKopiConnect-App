@@ -22,12 +22,15 @@ dependencies:
   http: ^1.6.0
   firebase_app_check: ^0.4.8
   shared_preferences: ^2.5.6
+  flutter_svg: ^2.3.2
+  firebase_messaging: ^16.7.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
 
   flutter_lints: ^6.0.0
+  image: 4.3.0
 
 
 flutter:
@@ -36,7 +39,10 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/category_icons/
     - assets/images/kkopitea_drink.png
+    - assets/images/kkopi_logo.png
+    - assets/images/kkopi_logo.webp
     - assets/images/welcome_customize.png
     - assets/images/welcome_drink.png
     - assets/images/welcome_friends.png

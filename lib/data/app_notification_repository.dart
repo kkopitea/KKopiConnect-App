@@ -29,20 +29,34 @@ class AppNotificationRepository {
       });
 
   Future<void> save(AppNotification notification) async {
+    final normalizedType = notification.type.trim().toLowerCase();
     if (notification.id.isEmpty ||
         notification.title.trim().isEmpty ||
-        notification.message.trim().isEmpty) {
+        notification.message.trim().isEmpty ||
+        notification.title.trim().length > 128 ||
+        notification.message.trim().length > 2000 ||
+        !const {'promotion', 'system'}.contains(normalizedType) ||
+        notification.imageUrl.trim().length > 2048 ||
+        notification.version.trim().length > 50 ||
+        !const {
+          'notifications',
+          'coffee',
+          'cardGift',
+          'localOffer',
+        }.contains(notification.iconKey)) {
       throw ArgumentError(
-        'Notification id, title, and message are required.',
+        'Notification fields are invalid or exceed supported limits.',
       );
     }
     await _notifications.doc(notification.id).set({
       'title': notification.title.trim(),
       'message': notification.message.trim(),
-      'type': notification.type,
+      'type': normalizedType == 'promotion' ? 'Promotion' : 'System',
       'isActive': notification.isActive,
       'sortOrder': notification.sortOrder,
       'iconKey': notification.iconKey,
+      'imageUrl': notification.imageUrl.trim(),
+      'version': notification.version.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

@@ -61,232 +61,250 @@ class _OrderListScreenState extends State<OrderListScreen> {
   Widget build(BuildContext context) {
     return CurvedContentPage(
       title: 'MY ORDERS',
-      body: StreamBuilder<List<PlacedOrder>>(
-        stream: _ordersStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: RefreshIndicator(
+        onRefresh: _refreshOrders,
+        child: StreamBuilder<List<PlacedOrder>>(
+          stream: _ordersStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (snapshot.hasError) {
-            final error = snapshot.error;
-            final errorCode = error is FirebaseException
-                ? ' (${error.code})'
-                : '';
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Could not load orders$errorCode.'),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => setState(_updateOrdersStream),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final orders = snapshot.data ?? const <PlacedOrder>[];
-
-          if (_activeUserId == null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
+            if (snapshot.hasError) {
+              final error = snapshot.error;
+              final errorCode = error is FirebaseException
+                  ? ' (${error.code})'
+                  : '';
+              return _scrollableStatus(
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.lock_outline_rounded,
-                      size: 44,
-                      color: AppColors.orange,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Please sign in',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Sign in to view your orders.',
-                      style: TextStyle(color: AppColors.textMuted),
+                    Text('Could not load orders$errorCode.'),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () => setState(_updateOrdersStream),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry'),
                     ),
                   ],
                 ),
-              ),
-            );
-          }
+              );
+            }
 
-          if (orders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.receipt_long_rounded,
-                      size: 44,
-                      color: AppColors.orange,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No orders yet',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Your placed orders will appear here.',
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 14),
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const CategoriesScreen(),
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.orange,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Browse menu'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+            final orders = snapshot.data ?? const <PlacedOrder>[];
 
-          final orderIds = orders.map((order) => order.id).toSet();
-          final deletableOrderIds = orders
-              .where(_isDeletableOrder)
-              .map((order) => order.id)
-              .toSet();
-          _selectedOrderIds.removeWhere(
-            (id) => !orderIds.contains(id) || !deletableOrderIds.contains(id),
-          );
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Order history',
+            if (_activeUserId == null) {
+              return _scrollableStatus(
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 44,
+                        color: AppColors.orange,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Please sign in',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ),
-                    if (_isSelectingOrders) ...[
-                      TextButton(
-                        onPressed: _isDeletingOrders
-                            ? null
-                            : () => setState(() {
-                                _selectedOrderIds.clear();
-                                _isSelectingOrders = false;
-                              }),
-                        child: const Text('Done'),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Sign in to view your orders.',
+                        style: TextStyle(color: AppColors.textMuted),
                       ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed:
-                            _selectedOrderIds.isEmpty || _isDeletingOrders
-                            ? null
-                            : () => _confirmDeleteOrders(
-                                _activeUserId!,
-                                _selectedOrderIds.toList(),
-                              ),
-                        icon: _isDeletingOrders
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.delete_outline_rounded),
-                        label: Text('Delete (${_selectedOrderIds.length})'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFC62828),
-                          foregroundColor: Colors.white,
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            if (orders.isEmpty) {
+              return _scrollableStatus(
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.receipt_long_rounded,
+                        size: 44,
+                        color: AppColors.orange,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No orders yet',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ] else
-                      TextButton.icon(
-                        onPressed: () => setState(() {
-                          _isSelectingOrders = true;
-                        }),
-                        icon: const Icon(Icons.checklist_rounded),
-                        label: const Text('Select'),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Your placed orders will appear here.',
+                        style: TextStyle(color: AppColors.textMuted),
                       ),
-                  ],
+                      const SizedBox(height: 14),
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CategoriesScreen(),
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Browse menu'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (_isSelectingOrders)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(14, 4, 14, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Only completed or cancelled orders can be deleted.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
+              );
+            }
+
+            final orderIds = orders.map((order) => order.id).toSet();
+            final deletableOrderIds = orders
+                .where(_isDeletableOrder)
+                .map((order) => order.id)
+                .toSet();
+            _selectedOrderIds.removeWhere(
+              (id) => !orderIds.contains(id) || !deletableOrderIds.contains(id),
+            );
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Order history',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (_isSelectingOrders) ...[
+                        TextButton(
+                          onPressed: _isDeletingOrders
+                              ? null
+                              : () => setState(() {
+                                  _selectedOrderIds.clear();
+                                  _isSelectingOrders = false;
+                                }),
+                          child: const Text('Done'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed:
+                              _selectedOrderIds.isEmpty || _isDeletingOrders
+                              ? null
+                              : () => _confirmDeleteOrders(
+                                  _activeUserId!,
+                                  _selectedOrderIds.toList(),
+                                ),
+                          icon: _isDeletingOrders
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline_rounded),
+                          label: Text('Delete (${_selectedOrderIds.length})'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFC62828),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ] else
+                        TextButton.icon(
+                          onPressed: () => setState(() {
+                            _isSelectingOrders = true;
+                          }),
+                          icon: const Icon(Icons.checklist_rounded),
+                          label: const Text('Select'),
+                        ),
+                    ],
+                  ),
+                ),
+                if (_isSelectingOrders)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(14, 4, 14, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Only completed or cancelled orders can be deleted.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(14),
-                  itemCount: orders.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) => _OrderCard(
-                    order: orders[index],
-                    isSelecting: _isSelectingOrders,
-                    isSelected: _selectedOrderIds.contains(orders[index].id),
-                    onTap: () {
-                      if (_isSelectingOrders) {
-                        if (!_isDeletableOrder(orders[index])) return;
-                        setState(() {
-                          final orderId = orders[index].id;
-                          if (!_selectedOrderIds.add(orderId)) {
-                            _selectedOrderIds.remove(orderId);
-                          }
-                        });
-                      } else {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => OrderDetailsScreen(
-                              order: orders[index],
-                              onNavigateTab: widget.onNavigateTab,
+                Expanded(
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(14),
+                    itemCount: orders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) => _OrderCard(
+                      order: orders[index],
+                      isSelecting: _isSelectingOrders,
+                      isSelected: _selectedOrderIds.contains(orders[index].id),
+                      onTap: () {
+                        if (_isSelectingOrders) {
+                          if (!_isDeletableOrder(orders[index])) return;
+                          setState(() {
+                            final orderId = orders[index].id;
+                            if (!_selectedOrderIds.add(orderId)) {
+                              _selectedOrderIds.remove(orderId);
+                            }
+                          });
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => OrderDetailsScreen(
+                                order: orders[index],
+                                onNavigateTab: widget.onNavigateTab,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                    },
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
+  }
+
+  Widget _scrollableStatus(Widget child) => ListView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    children: [
+      SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.65,
+        child: Center(child: child),
+      ),
+    ],
+  );
+
+  Future<void> _refreshOrders() async {
+    if (mounted) setState(_updateOrdersStream);
   }
 
   bool _isDeletableOrder(PlacedOrder order) {
@@ -486,7 +504,7 @@ class _OrderCard extends StatelessWidget {
   }
 }
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
   const OrderDetailsScreen({
     super.key,
     required this.order,
@@ -497,197 +515,225 @@ class OrderDetailsScreen extends StatelessWidget {
   final ValueChanged<int>? onNavigateTab;
 
   @override
-  Widget build(BuildContext context) {
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  Stream<List<PlacedOrder>>? _orderStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateOrderStream();
+  }
+
+  void _updateOrderStream() {
     final user = FirebaseAuth.instance.currentUser;
-    final orderStream = user == null
+    _orderStream = user == null
         ? null
         : FirestoreOrderRepository().watchOrders(user.uid);
+  }
 
+  Future<void> _refreshOrder() async {
+    if (mounted) setState(_updateOrderStream);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return CurvedContentPage(
       title: 'Order Details',
-      bottomNavigationBar: onNavigateTab == null
+      bottomNavigationBar: widget.onNavigateTab == null
           ? null
           : MainBottomNavigationBar(
               selectedIndex: 3,
               onTap: (index) {
                 Navigator.of(context).popUntil((route) => route.isFirst);
-                onNavigateTab!(index);
+                widget.onNavigateTab!(index);
               },
             ),
-      body: StreamBuilder<List<PlacedOrder>>(
-        stream: orderStream,
-        builder: (context, orderSnapshot) =>
-            ValueListenableBuilder<List<PlacedOrder>>(
-              valueListenable: OrdersStore.orders,
-              builder: (context, orders, _) {
-                final remoteMatches =
-                    (orderSnapshot.data ?? const <PlacedOrder>[]).where(
-                      (item) => item.id == order.id,
-                    );
-                final localMatches = orders.where(
-                  (item) => item.id == order.id,
-                );
-                final current = remoteMatches.isNotEmpty
-                    ? remoteMatches.first
-                    : localMatches.isNotEmpty
-                    ? localMatches.first
-                    : order;
-                final statusColor = _statusColor(current.status);
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: _panelDecoration,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  current.fulfillmentLabel,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                child: Text(
-                                  current.status,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _formatDate(current.createdAt),
-                            style: const TextStyle(color: AppColors.textMuted),
-                          ),
-                          Text(
-                            'Payment: ${current.paymentMethod}',
-                            style: const TextStyle(color: AppColors.textMuted),
-                          ),
-                          if (current.instructions.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Note: ${current.instructions}',
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _OrderTrackingCard(
-                      status: current.status,
-                      createdAt: current.createdAt,
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: _panelDecoration,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Items',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          for (final item in current.items) ...[
-                            if (item != current.items.first)
-                              const Divider(height: 16),
+      body: RefreshIndicator(
+        onRefresh: _refreshOrder,
+        child: StreamBuilder<List<PlacedOrder>>(
+          stream: _orderStream,
+          builder: (context, orderSnapshot) =>
+              ValueListenableBuilder<List<PlacedOrder>>(
+                valueListenable: OrdersStore.orders,
+                builder: (context, orders, _) {
+                  final remoteMatches =
+                      (orderSnapshot.data ?? const <PlacedOrder>[]).where(
+                        (item) => item.id == widget.order.id,
+                      );
+                  final localMatches = orders.where(
+                    (item) => item.id == widget.order.id,
+                  );
+                  final current = remoteMatches.isNotEmpty
+                      ? remoteMatches.first
+                      : localMatches.isNotEmpty
+                      ? localMatches.first
+                      : widget.order;
+                  final statusColor = _statusColor(current.status);
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: _panelDecoration,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Row(
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '${item.product.name} × ${item.quantity}',
+                                    current.fulfillmentLabel,
                                     style: const TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: Text(
+                                    current.status,
+                                    style: TextStyle(
+                                      color: statusColor,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  '${AppColors.pesoSymbol}${item.total}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Text(
-                              '${item.size} · ${item.sugar} sugar',
+                              _formatDate(current.createdAt),
                               style: const TextStyle(
-                                fontSize: 13,
                                 color: AppColors.textMuted,
                               ),
                             ),
-                            if (item.addIns.isNotEmpty ||
-                                item.addOns.isNotEmpty)
+                            Text(
+                              'Payment: ${current.paymentMethod}',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            if (current.instructions.isNotEmpty) ...[
+                              const SizedBox(height: 8),
                               Text(
-                                [...item.addIns, ...item.addOns].join(', '),
+                                'Note: ${current.instructions}',
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _OrderTrackingCard(
+                        status: current.status,
+                        createdAt: current.createdAt,
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: _panelDecoration,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Items',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            for (final item in current.items) ...[
+                              if (item != current.items.first)
+                                const Divider(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${item.product.name} × ${item.quantity}',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${AppColors.pesoSymbol}${item.total}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${item.size} · ${item.sugar} sugar',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textMuted,
                                 ),
                               ),
-                          ],
-                          const Divider(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Order total',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              Text(
-                                '${AppColors.pesoSymbol}${current.total}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
+                              if (item.addIns.isNotEmpty ||
+                                  item.addOns.isNotEmpty)
+                                Text(
+                                  [...item.addIns, ...item.addOns].join(', '),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
-                              ),
                             ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (current.status == 'Pending') ...[
-                      const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: () => _confirmCancellation(context, current),
-                        icon: const Icon(Icons.cancel_outlined),
-                        label: const Text('Cancel order'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFC62828),
+                            const Divider(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Order total',
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                Text(
+                                  '${AppColors.pesoSymbol}${current.total}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
+                      if (current.status == 'Pending') ...[
+                        const SizedBox(height: 14),
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              _confirmCancellation(context, current),
+                          icon: const Icon(Icons.cancel_outlined),
+                          label: const Text('Cancel order'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFC62828),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                );
-              },
-            ),
+                  );
+                },
+              ),
+        ),
       ),
     );
   }

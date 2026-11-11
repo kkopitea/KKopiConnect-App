@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/product_favorites_repository.dart';
@@ -30,6 +31,11 @@ class FavoritesStore {
 
   static bool contains(String productId) =>
       productIds.value.contains(productId);
+
+  static Future<void> refresh() async {
+    if (Firebase.apps.isEmpty || _repositoryOverride != null) return;
+    _listenToUserFavorites(FirebaseAuth.instance.currentUser);
+  }
 
   static void startListening() {
     _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen(

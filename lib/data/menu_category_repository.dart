@@ -11,21 +11,26 @@ class MenuCategoryRepository {
   CollectionReference<Map<String, dynamic>> get _categories =>
       _firestore.collection('categories');
 
-  Stream<List<MenuCategory>> watchCategories() =>
-      _categories.snapshots().map((snapshot) {
-        final categories = snapshot.docs
-            .map(
-              (document) =>
-                  MenuCategory.fromFirestore(document.id, document.data()),
-            )
-            .where((category) => category.name.trim().isNotEmpty)
-            .toList();
-        categories.sort((a, b) {
-          final byOrder = a.sortOrder.compareTo(b.sortOrder);
-          return byOrder == 0 ? a.name.compareTo(b.name) : byOrder;
-        });
-        return List.unmodifiable(categories);
-      });
+  Stream<List<MenuCategory>> watchCategories() => _categories.snapshots().map((
+    snapshot,
+  ) {
+    final categories = snapshot.docs
+        .map(
+          (document) =>
+              MenuCategory.fromFirestore(document.id, document.data()),
+        )
+        .where((category) => category.name.trim().isNotEmpty)
+        .toList();
+    categories.sort((a, b) {
+      final byOrder = a.sortOrder.compareTo(b.sortOrder);
+      return byOrder == 0 ? a.name.compareTo(b.name) : byOrder;
+    });
+    const legacyIds = {'coffee', 'milktea', 'frappe', 'fruit_tea', 'snacks'};
+    if (categories.every((category) => legacyIds.contains(category.id))) {
+      return defaultMenuCategories;
+    }
+    return List.unmodifiable(categories);
+  });
 
   Future<void> save(
     MenuCategory category, {

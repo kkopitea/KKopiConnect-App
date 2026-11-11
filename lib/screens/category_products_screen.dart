@@ -5,6 +5,7 @@ import '../data/menu_catalog.dart';
 import '../data/order_draft.dart';
 import '../state/cart_store.dart';
 import 'product_detail_screen.dart';
+import '../widgets/category_selection_icon.dart';
 import '../widgets/menu_product_card.dart';
 
 class CategoryProductsScreen extends StatelessWidget {
@@ -37,8 +38,9 @@ class CategoryProductsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      category.displayIcon,
+                    CategorySelectionIcon(
+                      categoryId: category.id,
+                      fallbackIcon: category.displayIcon,
                       size: 44,
                       color: AppColors.orange,
                     ),

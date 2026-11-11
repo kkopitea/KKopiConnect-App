@@ -1,10 +1,21 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../data/advertisement.dart';
+import '../data/advertisement_repository.dart';
+import '../data/app_notification.dart';
+import '../data/app_notification_repository.dart';
 import '../data/menu_catalog.dart';
+import '../data/order_repository.dart';
+import '../data/placed_order.dart';
 import '../data/order_draft.dart';
+import '../services/advertisement_navigation.dart';
 import '../state/cart_store.dart';
+import '../state/orders_store.dart';
 import '../state/product_ratings_store.dart';
 import 'category_products_screen.dart';
 import 'notifications_screen.dart';
@@ -12,6 +23,7 @@ import 'product_detail_screen.dart';
 import '../widgets/advertisement_carousel.dart';
 import '../widgets/category_icon_circle.dart';
 import '../widgets/menu_product_card.dart';
+import '../widgets/menu_products_status_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -19,11 +31,15 @@ class HomeScreen extends StatefulWidget {
     required this.onSeeAllCategories,
     this.onNavigateTab,
     this.onSelectCategory,
+    this.advertisements,
+    this.onRefresh,
   });
 
   final VoidCallback onSeeAllCategories;
   final ValueChanged<int>? onNavigateTab;
   final ValueChanged<String>? onSelectCategory;
+  final Stream<List<Advertisement>>? advertisements;
+  final Future<void> Function()? onRefresh;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -90,19 +106,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            tooltip: 'Notifications',
+                          _NotificationBell(
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => NotificationsScreen(
                                   onNavigateTab: widget.onNavigateTab,
+                                  onSelectCategory: widget.onSelectCategory,
                                 ),
                               ),
-                            ),
-                            icon: const Icon(
-                              Icons.notifications_none_rounded,
-                              color: Colors.white,
-                              size: 25,
                             ),
                           ),
                         ],
@@ -120,61 +131,73 @@ class _HomeScreenState extends State<HomeScreen> {
                       top: Radius.circular(30),
                     ),
                   ),
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
-                    children: [
-                      AdvertisementCarousel(onSelect: _selectAdvertisement),
-                      const SizedBox(height: 18),
-                      _SectionHeading(
-                        title: 'CATEGORIES',
-                        onSeeAll: widget.onSeeAllCategories,
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 120,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: menuCategories.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final category = menuCategories[index];
-                            return SizedBox(
-                              width: 72,
-                              child: _HomeCategoryButton(
-                                icon: category.displayIcon,
-                                label: _categoryLabel(category),
-                                onTap: () => _openCategory(category.id),
-                              ),
-                            );
-                          },
+                  child: RefreshIndicator(
+                    onRefresh: widget.onRefresh ?? _refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
+                      children: [
+                        AdvertisementCarousel(
+                          advertisements: widget.advertisements,
+                          onSelect: _selectAdvertisement,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _SectionHeading(
-                        title: 'Best Selling',
-                        onSeeAll: widget.onSeeAllCategories,
-                      ),
-                      const SizedBox(height: 10),
-                      for (final product
-                          in ProductRatingsStore.bestRatedProducts(
-                            menuProducts,
-                            limit: 3,
-                          )) ...[
-                        MenuProductCard(
-                          product: product,
-                          onTap: () => _openProduct(product),
-                          onAdd: () {
-                            CartStore.add(OrderDraft(product: product));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${product.name} added to cart'),
-                              ),
-                            );
-                          },
+                        const SizedBox(height: 18),
+                        _SectionHeading(
+                          title: 'CATEGORIES',
+                          onSeeAll: widget.onSeeAllCategories,
                         ),
                         const SizedBox(height: 10),
+                        SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: menuCategories.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final category = menuCategories[index];
+                              return SizedBox(
+                                width: 72,
+                                child: _HomeCategoryButton(
+                                  categoryId: category.id,
+                                  icon: category.displayIcon,
+                                  label: _categoryLabel(category),
+                                  onTap: () => _openCategory(category.id),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const MenuProductsStatusBanner(),
+                        _SectionHeading(
+                          title: 'Best Selling',
+                          onSeeAll: widget.onSeeAllCategories,
+                        ),
+                        const SizedBox(height: 10),
+                        for (final product
+                            in ProductRatingsStore.bestRatedProducts(
+                              menuProducts,
+                              limit: 3,
+                            )) ...[
+                          MenuProductCard(
+                            product: product,
+                            onTap: () => _openProduct(product),
+                            onAdd: () {
+                              CartStore.add(OrderDraft(product: product));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '${product.name} added to cart',
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -185,49 +208,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _refresh() async {
+    if (mounted) setState(() {});
+  }
+
   void _selectAdvertisement(Advertisement advertisement) {
-    final products = advertisement.selectedProductIds
-        .map(
-          (id) => menuProducts.where((product) => product.id == id).firstOrNull,
-        )
-        .whereType<MenuProduct>()
-        .toList(growable: false);
-    if (products.isEmpty) {
-      widget.onSeeAllCategories();
-    } else if (products.length == 1) {
-      _openProduct(products.first);
-    } else {
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (sheetContext) => SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Text(
-                  advertisement.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              for (final product in products)
-                ListTile(
-                  title: Text(product.name),
-                  subtitle: Text('${AppColors.pesoSymbol}${product.price}'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _openProduct(product);
-                  },
-                ),
-            ],
-          ),
-        ),
-      );
-    }
+    AdvertisementNavigation.open(
+      context,
+      advertisement,
+      onNavigateTab: widget.onNavigateTab,
+      onSelectCategory: widget.onSelectCategory,
+    );
   }
 
   void _openProduct(MenuProduct product) {
@@ -260,7 +251,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _categoryLabel(MenuCategory category) {
-    if (category.id == 'milktea') return 'Milk Tea';
     return category.name
         .split(RegExp(r'\s+'))
         .map(
@@ -270,6 +260,182 @@ class _HomeScreenState extends State<HomeScreen> {
         )
         .join(' ');
   }
+}
+
+class _NotificationBell extends StatefulWidget {
+  const _NotificationBell({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_NotificationBell> createState() => _NotificationBellState();
+}
+
+class _NotificationBellState extends State<_NotificationBell> {
+  final Set<String> _notificationIds = {};
+  final Set<String> _readNotificationIds = {};
+  StreamSubscription<List<AppNotification>>? _notificationsSubscription;
+  StreamSubscription<List<Advertisement>>? _advertisementsSubscription;
+  StreamSubscription<List<PlacedOrder>>? _ordersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _readSubscription;
+  String? _userId;
+  bool _readStateLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    OrdersStore.orders.addListener(_ordersChanged);
+
+    try {
+      _userId = FirebaseAuth.instance.currentUser?.uid;
+    } catch (error) {
+      debugPrint('Unable to initialize notification badge auth: $error');
+    }
+    _readStateLoaded = _userId == null;
+
+    try {
+      _notificationsSubscription = AppNotificationRepository()
+          .watchActive()
+          .listen(
+            (notifications) => _replaceIds(
+              'notification-',
+              notifications.map((notification) => notification.id),
+            ),
+            onError: (Object error) {
+              debugPrint('Unable to load notification badge items: $error');
+            },
+          );
+    } catch (error) {
+      debugPrint('Unable to subscribe to notification badge items: $error');
+    }
+    try {
+      _advertisementsSubscription = AdvertisementRepository()
+          .watchActive()
+          .listen(
+            (advertisements) => _replaceIds(
+              'promotion-',
+              advertisements.map((advertisement) => advertisement.id),
+            ),
+            onError: (Object error) {
+              debugPrint('Unable to load promotion badge items: $error');
+            },
+          );
+    } catch (error) {
+      debugPrint('Unable to subscribe to promotion badge items: $error');
+    }
+
+    final userId = _userId;
+    if (userId != null) {
+      try {
+        _ordersSubscription = FirestoreOrderRepository()
+            .watchOrders(userId)
+            .listen(
+              (orders) =>
+                  _replaceIds('order-', orders.map((order) => order.id)),
+              onError: (Object error) {
+                debugPrint('Unable to load order notification badge: $error');
+              },
+            );
+        _readSubscription = FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('notificationReads')
+            .where('isRead', isEqualTo: true)
+            .snapshots()
+            .listen(
+              (snapshot) {
+                if (!mounted) return;
+                setState(() {
+                  _readNotificationIds
+                    ..clear()
+                    ..addAll(snapshot.docs.map((document) => document.id));
+                  _readStateLoaded = true;
+                });
+              },
+              onError: (Object error) {
+                debugPrint(
+                  'Unable to load notification badge read state: $error',
+                );
+              },
+            );
+      } catch (error) {
+        debugPrint(
+          'Unable to subscribe to notification badge read state: $error',
+        );
+      }
+    }
+  }
+
+  void _replaceIds(String prefix, Iterable<String> ids) {
+    if (!mounted) return;
+    setState(() {
+      _notificationIds.removeWhere((id) => id.startsWith(prefix));
+      _notificationIds.addAll(ids.map((id) => '$prefix$id'));
+    });
+  }
+
+  void _ordersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _hasUnreadNotifications {
+    if (!_readStateLoaded) return false;
+    final allIds = {
+      ..._notificationIds,
+      ...OrdersStore.orders.value.map((order) => 'order-${order.id}'),
+    };
+    return allIds.any((id) => !_readNotificationIds.contains(id));
+  }
+
+  @override
+  void dispose() {
+    OrdersStore.orders.removeListener(_ordersChanged);
+    unawaited(_notificationsSubscription?.cancel());
+    unawaited(_advertisementsSubscription?.cancel());
+    unawaited(_ordersSubscription?.cancel());
+    unawaited(_readSubscription?.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: _hasUnreadNotifications
+        ? 'Notifications (unread)'
+        : 'Notifications',
+    onPressed: widget.onPressed,
+    icon: SizedBox(
+      width: 30,
+      height: 30,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(
+            left: 2,
+            bottom: 1,
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: Colors.white,
+              size: 25,
+            ),
+          ),
+          if (_hasUnreadNotifications)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD32F2F),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _SectionHeading extends StatelessWidget {
@@ -305,11 +471,13 @@ class _SectionHeading extends StatelessWidget {
 
 class _HomeCategoryButton extends StatelessWidget {
   const _HomeCategoryButton({
+    required this.categoryId,
     required this.icon,
     required this.label,
     required this.onTap,
   });
 
+  final String categoryId;
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -324,11 +492,16 @@ class _HomeCategoryButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Column(
           children: [
-            CategoryIconCircle(icon: icon, size: 60),
+            CategoryIconCircle(
+              categoryId: categoryId,
+              fallbackIcon: icon,
+              size: 60,
+            ),
             const SizedBox(height: 5),
             Text(
               label,
-              maxLines: 1,
+              maxLines: 2,
+              textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),

@@ -368,15 +368,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       return _bestSellingProducts();
     }
 
-    final requestedCategory = menuCategories
-        .where(
-          (category) =>
-              normalizedQuestion.contains(category.name.toLowerCase()) ||
-              normalizedQuestion.contains(
-                category.id.replaceAll('_', ' ').toLowerCase(),
-              ),
-        )
-        .firstOrNull;
+    final requestedCategory = menuCategories.where((category) {
+      final name = category.name.toLowerCase();
+      final categoryId = category.id.replaceAll('_', ' ').toLowerCase();
+      final singularName = name.endsWith('s')
+          ? name.substring(0, name.length - 1)
+          : name;
+      final singularId = categoryId.endsWith('s')
+          ? categoryId.substring(0, categoryId.length - 1)
+          : categoryId;
+      return normalizedQuestion.contains(name) ||
+          normalizedQuestion.contains(singularName) ||
+          normalizedQuestion.contains(categoryId) ||
+          normalizedQuestion.contains(singularId);
+    }).firstOrNull;
     if (requestedCategory != null) {
       final hasProductIntent = RegExp(
         r'\b(what|which|show|have|menu|list|drink|product|recommend)\b',

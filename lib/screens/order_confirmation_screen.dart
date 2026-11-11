@@ -196,9 +196,9 @@ class OrderConfirmationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   TextButton(
-                    onPressed: () =>
-                        Navigator.of(context)
-                            .popUntil((route) => route.isFirst),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).popUntil((route) => route.isFirst),
                     child: const Text(
                       'Back to home',
                       style: TextStyle(

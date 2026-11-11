@@ -242,11 +242,15 @@ class _AdvertisementCarouselState extends State<AdvertisementCarousel> {
         else
           Icon(icon, color: Colors.white),
         const SizedBox(width: 9),
-        Text(
-          message,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
+        Flexible(
+          child: Text(
+            message,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],

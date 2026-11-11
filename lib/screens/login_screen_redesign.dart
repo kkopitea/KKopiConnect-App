@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../services/guest_name_prompt.dart';
+import '../widgets/instant_page_route.dart';
 import 'forgot_password_screen.dart';
 import 'main_interface_screen.dart';
 import 'register_screen.dart';
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainInterfaceScreen()),
+        instantPageRoute((_) => const MainInterfaceScreen()),
       );
     } on FirebaseAuthException catch (error, stackTrace) {
       debugPrint(
@@ -88,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainInterfaceScreen()),
+        instantPageRoute((_) => const MainInterfaceScreen()),
       );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;

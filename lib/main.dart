@@ -6,6 +6,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 
 import 'app_colors.dart';
 import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
 import 'screens/splash_screen.dart';
 
 Future<void> main() async {
@@ -42,6 +43,8 @@ class KkopiTeaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: PushNotificationService.navigatorKey,
+      scaffoldMessengerKey: PushNotificationService.scaffoldMessengerKey,
       title: 'KKOPI.TEA',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

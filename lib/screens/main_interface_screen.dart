@@ -9,6 +9,7 @@ import '../data/menu_catalog.dart';
 import '../data/menu_category_repository.dart';
 import '../state/favorites_store.dart';
 import '../state/product_ratings_store.dart';
+import '../services/push_notification_service.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'chatbot_screen.dart';
@@ -27,6 +28,7 @@ class MainInterfaceScreen extends StatefulWidget {
 class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   int _selectedIndex = 0;
   String? _requestedCategoryId;
+  bool _isListeningToMenuData = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _productsSubscription;
   StreamSubscription<List<MenuCategory>>? _categoriesSubscription;
@@ -35,14 +37,30 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
   void initState() {
     super.initState();
     menuProducts = [];
+    menuProductsLoadStatus.value = const MenuProductsLoadStatus.loading();
     FavoritesStore.startListening();
     ProductRatingsStore.startListening();
+    PushNotificationService.instance.setDashboardNavigation(
+      onNavigateTab: _selectTab,
+      onSelectCategory: _openCategory,
+    );
+    unawaited(PushNotificationService.instance.start());
+    _listenToMenuData();
+  }
+
+  void _listenToMenuData() {
+    _isListeningToMenuData = true;
     _categoriesSubscription = MenuCategoryRepository().watchCategories().listen(
       (categories) {
         updateMenuCategories(categories);
       },
       onError: (Object error) {
+        if (!_isListeningToMenuData ||
+            FirebaseAuth.instance.currentUser == null) {
+          return;
+        }
         debugPrint('Unable to load menu categories: $error');
+        _showFirebaseReadError('menu categories', error);
       },
     );
     _productsSubscription = FirebaseFirestore.instance
@@ -54,18 +72,59 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
                 .map((doc) => MenuProduct.fromFirestore(doc.id, doc.data()))
                 .whereType<MenuProduct>()
                 .toList();
-            if (mounted) setState(() => menuProducts = items);
+            menuProducts = items;
+            menuProductsLoadStatus.value = MenuProductsLoadStatus(
+              phase: MenuProductsLoadPhase.loaded,
+              documentCount: snapshot.docs.length,
+              availableCount: items.length,
+            );
+            if (mounted) setState(() {});
           },
           onError: (Object error) {
             debugPrint('Unable to load menu products: $error');
+            menuProductsLoadStatus.value = MenuProductsLoadStatus(
+              phase: MenuProductsLoadPhase.error,
+              errorCode: error is FirebaseException
+                  ? error.code
+                  : error.runtimeType.toString(),
+            );
           },
         );
   }
 
+  Future<void> _refreshMenuData() async {
+    await _stopListeningToMenuData();
+    if (!mounted) return;
+    menuProductsLoadStatus.value = const MenuProductsLoadStatus.loading();
+    _listenToMenuData();
+  }
+
+  Future<void> _stopListeningToMenuData() async {
+    _isListeningToMenuData = false;
+    final categoriesSubscription = _categoriesSubscription;
+    final productsSubscription = _productsSubscription;
+    _categoriesSubscription = null;
+    _productsSubscription = null;
+    await categoriesSubscription?.cancel();
+    await productsSubscription?.cancel();
+  }
+
+  void _showFirebaseReadError(String dataType, Object error) {
+    if (!mounted) return;
+    final code = error is FirebaseException
+        ? error.code
+        : error.runtimeType.toString();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not load $dataType from Firebase ($code).'),
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    _categoriesSubscription?.cancel();
-    _productsSubscription?.cancel();
+    PushNotificationService.instance.clearDashboardNavigation();
+    unawaited(_stopListeningToMenuData());
     super.dispose();
   }
 
@@ -74,14 +133,20 @@ class _MainInterfaceScreenState extends State<MainInterfaceScreen> {
       onSeeAllCategories: () => _selectTab(1),
       onNavigateTab: _selectTab,
       onSelectCategory: _openCategory,
+      onRefresh: _refreshMenuData,
     ),
     CategoriesScreen(
       onNavigateTab: _selectTab,
       selectedCategoryId: _requestedCategoryId,
+      onRefresh: _refreshMenuData,
     ),
     CartScreen(onNavigateTab: _selectTab),
     OrderListScreen(onNavigateTab: _selectTab),
-    ProfileScreen(onNavigateTab: _selectTab),
+    ProfileScreen(
+      onNavigateTab: _selectTab,
+      onSelectCategory: _openCategory,
+      onBeforeLogout: _stopListeningToMenuData,
+    ),
   ];
 
   void _selectTab(int index) => setState(() => _selectedIndex = index);

@@ -18,9 +18,16 @@ import 'register_screen.dart';
 import 'terms_conditions_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.onNavigateTab});
+  const ProfileScreen({
+    super.key,
+    this.onNavigateTab,
+    this.onSelectCategory,
+    this.onBeforeLogout,
+  });
 
   final ValueChanged<int>? onNavigateTab;
+  final ValueChanged<String>? onSelectCategory;
+  final Future<void> Function()? onBeforeLogout;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -291,6 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           MaterialPageRoute<void>(
             builder: (_) => NotificationsScreen(
               onNavigateTab: widget.onNavigateTab,
+              onSelectCategory: widget.onSelectCategory,
               selectedTab: 4,
             ),
           ),
@@ -426,6 +434,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logOut() async {
     try {
+      await widget.onBeforeLogout?.call();
       await FirebaseAuth.instance.signOut();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
