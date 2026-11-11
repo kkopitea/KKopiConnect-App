@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
+import '../widgets/instant_page_route.dart';
 import 'terms_conditions_screen.dart';
 import 'main_interface_screen.dart';
 
@@ -19,8 +20,8 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _acceptedTerms = false;
   bool _isLoading = false;
@@ -75,8 +76,6 @@ class _RegisterScreenState extends State<RegisterScreen>
       final email = _emailController.text.trim();
       final password = _passwordController.text;
       final name = _nameController.text.trim();
-      final isGuestUpgrade =
-          currentUser?.isAnonymous == true || currentUser?.email == email;
       final user = currentUser?.isAnonymous == true
           ? (await currentUser!.linkWithCredential(
               EmailAuthProvider.credential(email: email, password: password),
@@ -89,19 +88,29 @@ class _RegisterScreenState extends State<RegisterScreen>
             )).user;
       await user?.updateDisplayName(name);
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'email': email,
-          'isActive': true,
-          'name': name,
-          'phone': _phoneController.text.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          if (!isGuestUpgrade) 'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        final profile = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
+        final profileSnapshot = await profile.get();
+        if (profileSnapshot.exists) {
+          await profile.update({
+            'name': name,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          await profile.set({
+            'email': email,
+            'isActive': true,
+            'name': name,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const MainInterfaceScreen()),
+        instantPageRoute((_) => const MainInterfaceScreen()),
         (route) => false,
       );
     } on FirebaseAuthException catch (error) {
@@ -114,6 +123,18 @@ class _RegisterScreenState extends State<RegisterScreen>
         'weak-password' => 'Please choose a stronger password.',
         _ => 'Unable to create your account.',
       };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint(
+        'Unable to save registration profile (${error.code}): '
+        '${error.message}\n$stackTrace',
+      );
+      if (!mounted) return;
+      final message = error.code == 'permission-denied'
+          ? 'Your account was created, but profile setup was blocked by Firestore rules. Please try again or contact support.'
+          : 'Your account was created, but profile setup failed. Please try again.';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
@@ -142,8 +163,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     _cardController.dispose();
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -191,8 +212,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                               formKey: _formKey,
                               nameController: _nameController,
                               emailController: _emailController,
-                              phoneController: _phoneController,
                               passwordController: _passwordController,
+                              confirmPasswordController:
+                                  _confirmPasswordController,
                               obscurePassword: _obscurePassword,
                               acceptedTerms: _acceptedTerms,
                               isLoading: _isLoading,
@@ -321,8 +343,8 @@ class _RegisterCard extends StatelessWidget {
     required this.formKey,
     required this.nameController,
     required this.emailController,
-    required this.phoneController,
     required this.passwordController,
+    required this.confirmPasswordController,
     required this.obscurePassword,
     required this.acceptedTerms,
     required this.isLoading,
@@ -336,8 +358,8 @@ class _RegisterCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController emailController;
-  final TextEditingController phoneController;
   final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
   final bool obscurePassword;
   final bool acceptedTerms;
   final bool isLoading;
@@ -401,14 +423,6 @@ class _RegisterCard extends StatelessWidget {
                     : 'Enter a valid email',
               ),
               const SizedBox(height: 14),
-              _field(
-                phoneController,
-                'Phone number',
-                Icons.phone_android_outlined,
-                keyboardType: TextInputType.phone,
-                validator: _required,
-              ),
-              const SizedBox(height: 14),
               TextFormField(
                 controller: passwordController,
                 obscureText: obscurePassword,
@@ -427,6 +441,29 @@ class _RegisterCard extends StatelessWidget {
                 validator: (value) => value != null && value.length >= 6
                     ? null
                     : 'Use at least 6 characters',
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: confirmPasswordController,
+                obscureText: obscurePassword,
+                decoration:
+                    _inputDecoration(
+                      'Confirm Password',
+                      Icons.lock_outline,
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        onPressed: onTogglePassword,
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: const Color(0xFF888888),
+                        ),
+                      ),
+                    ),
+                validator: (value) => value == passwordController.text
+                    ? null
+                    : 'Passwords do not match',
               ),
               const SizedBox(height: 10),
               Row(

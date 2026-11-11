@@ -22,6 +22,7 @@ void main() {
       );
 
       expect(answer, contains('Iced Americano Caramel'));
+      expect(answer, contains('**Iced Americano Caramel**'));
       expect(answer, contains('(₱50)'));
     });
 

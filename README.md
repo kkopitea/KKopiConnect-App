@@ -40,42 +40,116 @@ also include `name`, `description`, and `imageUrl`; optional `sizes`,
 `sugarLevels`, `isBestSeller`, `isNew`, and `isClassic` are parsed. Admin-only
 fields such as `cloudinaryPublicId` and `updatedAt` may also be stored in the
 same document. Product edits are reflected by the live collection listener.
+If the menu is empty, the Home and Categories screens show whether Firestore
+returned no `products` documents, returned documents that failed the app's
+availability/schema checks, or rejected the read with a Firebase error code.
+Confirm the Firebase Console is open to project `kkopiconnect-2f015`; for
+`permission-denied`, verify the user is signed in, the deployed Firestore rules
+allow signed-in product reads, and App Check enforcement is configured for the
+app's Android package and signing certificate. A Firestore read does not create
+or restore deleted documents.
 
 ### Web-editable menu categories
 
 Use `categories/{categoryId}` for menu categories. Required fields are
-`name` (string), `iconKey` (string), and `sortOrder` (number). Supported icon
-keys are `milktea`, `coffee`, `snacks`, `frappe`, `fruitTea`, and `default`.
-Use stable document IDs such as `milktea`, `coffee`, `snacks`, `frappe`, and
-`fruit_tea`; product documents should refer to these IDs in `categoryId` or
+`name` (string), `iconKey` (string), and `sortOrder` (number). The built-in
+categories are `iced_lattes` (Iced Lattes, `icedLattes`), `bubble_teas`
+(Bubble Teas, `bubbleTeas`), `fruit_teas` (Fruit Teas, `fruitTea`),
+`non_caffeine` (Non Caffeine, `nonCaffeine`), and `amerikano` (Amerikano,
+`amerikano`). `default` is also supported as an icon key. “All” is a
+customer-facing filter and should not be created as a category document.
+Product documents should refer to category document IDs in `categoryId` or
 `categories`. Changes are read live and update Home, Categories, Search, and
-product category matching. If the collection is empty, the app keeps its
-built-in starter categories until web-managed category documents exist.
+product category matching. The web admin can rename, reorder, and manage these
+categories by editing this collection. While only the previous built-in IDs
+are present, the app displays the new built-in lineup and maps the old product
+category values to the closest new category. Remove obsolete category
+documents when adding the new IDs so they do not appear alongside the new
+lineup. If the collection is empty, the app keeps its built-in categories.
 Mobile implementation: `lib/data/menu_category_repository.dart`,
 `lib/data/menu_catalog.dart`, and `lib/screens/main_interface_screen.dart`.
 
-Example document `categories/coffee`:
+Example document `categories/iced_lattes`:
 
 ```json
 {
-  "name": "Coffee",
-  "iconKey": "coffee",
-  "sortOrder": 2,
+  "name": "Iced Lattes",
+  "iconKey": "icedLattes",
+  "sortOrder": 1,
   "updatedAt": "<Firestore server timestamp>"
 }
 ```
 
-Active promotion cards and promotion notifications use documents in
-`advertisements` with `title`, `eyebrow`, `description`, `buttonLabel`,
-`imageUrl`, `isActive`, `sortOrder`, and optional `productId`. The admin app
-should write to this same collection for promotion changes to appear on mobile.
+Active promotion cards and promotion notifications can use documents in
+`advertisements` or `promotions` with `title`, `eyebrow`, `description`,
+`buttonLabel`, `imageUrl`, `isActive`, `sortOrder`, and a linked `productId`
+(or `productIds` for compatibility). Optional `startAt` and `endAt` Firestore
+timestamps control when a promotion is shown. `startAt` is inclusive and
+`endAt` is exclusive; leave either field out for an open-ended schedule. The
+mobile app watches both collections and follows the configured
+`buttonActionType` and `buttonTarget`
+when a campaign is selected. If no action type is configured, it opens the
+linked `productId` directly; if it is empty, the first available product in
+`productIds` is used. Promotion changes saved in either collection appear on
+mobile.
+Set `buttonActionType` to `product`, `category`, `menu`, `cart`, or `orders`
+to control where the promotion's action goes. For `product` or `category`,
+`buttonTarget` must be that Firestore document ID. If `buttonActionType` is
+omitted, existing behavior is preserved: linked products open first, otherwise
+the menu dashboard opens.
+Use this copy-ready Firebase Web SDK format when adding or editing an
+advertisement in the web admin. Promotion form entries can use the same fields
+and are saved in the `promotions` collection. Change the text, image URL,
+product IDs, and date values:
+
+```javascript
+import {
+  Timestamp,
+  doc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+
+const startAt = new Date("2026-11-13T00:00:00+08:00");
+const endAt = new Date("2026-11-16T00:00:00+08:00");
+
+await setDoc(
+  doc(db, "advertisements", "weekend-iced-latte-deal"),
+  {
+    title: "Weekend Iced Latte Deal",
+    eyebrow: "THIS WEEKEND",
+    description: "Get 20% off any iced latte from Friday through Sunday.",
+    buttonLabel: "Browse the offer",
+    buttonActionType: "product",
+    buttonTarget: "iced-latte-product-id",
+    imageUrl: "https://example.com/promotion-banner.jpg",
+    imageUrls: ["https://example.com/promotion-banner.jpg"],
+    isActive: true,
+    sortOrder: 1,
+    productId: "iced-latte-product-id",
+    productIds: ["iced-latte-product-id"],
+    isBuyOneTakeOne: false,
+    startAt: Timestamp.fromDate(startAt),
+    endAt: Timestamp.fromDate(endAt),
+    updatedAt: serverTimestamp(),
+  },
+  { merge: true },
+);
+```
+
+In the web admin, use date/time pickers and write `startAt` and `endAt` as
+Firestore `Timestamp` values (not display-formatted strings). The notification
+bell shows a red dot while there are unread active promotions, system
+announcements, or orders; marking a notification read clears its corresponding
+unread state.
 The carousel is hidden until at least one active promotion is available. Upload
-a square 800 × 800 px image (or larger, with the same 1:1 aspect ratio) and set
-`imageUrl` to its public HTTPS URL. The mobile card shows a small right-aligned
-image tile (about 126 × 128 px on regular screens, 88 × 110 px on narrow
-screens) using a cover crop; keep the main product or artwork centered and avoid
-placing important text close to the image edges. The full card is about 158 px
-high on regular screens and 190 px on narrow screens.
+an image around 1600 × 700 px (about 2.3:1) and set `imageUrl` to its public
+HTTPS URL. The image fills the entire carousel card with a cover crop. On a
+typical 390 px-wide phone, the card is about 362 × 158 px; on narrow phones it
+is about 190 px high and crops more from the sides. Keep the product or artwork
+near the center with important details away from the edges. The Flutter web
+build uses the same carousel; on very wide browser windows the cover crop is
+more pronounced.
 
 Search analytics are stored in `popularSearches` documents with `term`,
 `searchCount`, and `updatedAt`. The app increments a document for each submitted
@@ -269,13 +343,20 @@ Mobile implementation: `lib/data/product_favorites_repository.dart`,
 
 Create `notifications/{notificationId}` documents to manage the non-order
 messages shown in the Notifications screen. Required fields are `title`
-(string), `message` (string), `type` (`Promotion` or `System`), `isActive`
-(boolean), `sortOrder` (number), and optional `iconKey` (`notifications`,
-`coffee`, `cardGift`, or `localOffer`). Notification read state is stored per
-customer at
-`users/{uid}/notificationReads/notification-{notificationId}`. Order status
-notifications are generated from the customer's live `orders` records, and
-promotions continue to be generated from active `advertisements`.
+(string), `type` (`Promotion`/`promotion` or `System`/`system`), and `isActive`
+(boolean). `message` (string) is required for `System` notifications;
+`Promotion` notifications may use `message` or `description`. Optional
+`sortOrder` (number) and `iconKey` (`notifications`, `coffee`, `cardGift`, or
+`localOffer`) control display. Notification read state is stored per customer at
+`users/{uid}/notificationReads/notification-{notificationId}`. Dismissed
+notifications are stored in the same document with `isDismissed` set to `true`,
+so they stay hidden when the customer leaves and reopens Notifications. Order
+status notifications are generated from the customer's live `orders` records,
+and promotions saved by the admin to `notifications` appear in the Promotion
+filter. Promotion cards in the home carousel continue to use active
+`advertisements`. Notification documents are public broadcast content and are
+readable without signing in; only active administrators can create, update, or
+delete them.
 Mobile implementation: `lib/data/app_notification_repository.dart` and
 `lib/screens/notifications_screen.dart`.
 
@@ -292,6 +373,40 @@ Example document `notifications/new-menu`:
   "updatedAt": "<Firestore server timestamp>"
 }
 ```
+
+Push alerts are sent by the trusted Firebase Functions backend. An active
+notification created, activated, or updated with a new title/message (or a
+promotion's description) and an active advertisement created, activated, or
+updated with a new title/description are sent to registered devices. New
+orders and order-status changes are sent only to that customer's devices. The
+app stores each signed-in device's FCM token at
+`users/{uid}/fcmTokens/{token}`. Existing notifications are not sent
+retroactively. In the foreground, the app displays the push as a snackbar;
+when backgrounded, Android/iOS display the system notification. Selecting an
+order push opens Orders; other pushes open Notifications. Android uses the
+`kkopi_updates` notification channel.
+
+Deploy the backend and its token-write rule updates from the project directory:
+
+```powershell
+cd functions
+npm install
+npm test
+cd ..
+firebase deploy --only functions,firestore:rules
+```
+
+Cloud Functions deployment requires the Firebase project to use the Blaze
+billing plan and the Firebase CLI to be signed in to `kkopiconnect-2f015`.
+Install a new mobile build and allow notification permission on the device.
+On Android 13 and later, notification permission must be granted in the system
+prompt or app settings. Verify the device has a document in
+`users/{uid}/fcmTokens` before testing. The Firebase Functions must be deployed:
+without them, Firestore changes do not send push notifications.
+For iOS, enable the Push Notifications capability and upload an APNs
+authentication key in Firebase Console → Project settings → Cloud Messaging.
+Mobile implementation: `lib/services/push_notification_service.dart`;
+backend triggers: `functions/index.js`.
 
 Create `paymentMethods/{methodId}` documents to control the choices presented
 in Settings and checkout. Required fields are `name` (string), `isActive`
@@ -321,26 +436,31 @@ Drink customization options are managed in two collections:
 Each document uses `name` (string), `price` (non-negative number),
 `isAvailable` (boolean), `sortOrder` (number), and `updatedAt` (server
 timestamp). The mobile client listens to these collections in real time and
-uses the configured prices in cart and order totals. Selected prices are saved
-with each order line so later admin price changes do not alter an existing
-cart/order. The admin app should create, edit, and disable options by writing
-the same collection/document fields; the mobile repository also exposes
-`saveAddIn` and `saveAddOn` for authorized writers. Firestore Rules should allow
+uses configured add-on prices in cart and order totals. Selected prices are
+saved with each order line so later admin price changes do not alter an
+existing cart/order. The admin app should create, edit, and disable options by
+writing the same collection/document fields; the mobile repository also
+exposes `saveAddIn` and `saveAddOn` for authorized writers. The customer app
+shows the global `drinkAddOns` options for products in `non_caffeine`. Products
+can also define their own `addons` array of `{name, price}` maps in the product
+document; these product-specific options are shown for that product in any
+category and take precedence over the global list. Firestore Rules should allow
 clients to read these collections and restrict writes to authorized admins.
 
 Per-user notification read state is stored at
-`users/{uid}/notificationReads/{notificationId}`. The deployed Firestore
-Security Rules allow signed-in users to read the app catalog and configuration
-collections, limit profiles, notification state, favorites, ratings, and orders
-to their owner, and restrict shared configuration writes to active admins.
-Rules are maintained in `firestore.rules` and configured in `firebase.json`.
-Deploy updates from the project directory with
+`users/{uid}/notificationReads/{notificationId}`; dismissed entries also set
+`isDismissed` to `true`. Deploy the rules in `firestore.rules` to allow this
+field. The deployed Firestore Security Rules allow signed-in users to read the
+app catalog and configuration collections, limit profiles, notification state,
+favorites, ratings, and orders to their owner, and restrict shared configuration
+writes to active admins. Rules are maintained in `firestore.rules` and
+configured in `firebase.json`. Deploy updates from the project directory with
 `firebase deploy --only firestore:rules`. The web admin client must use this
 same Firebase project and an authenticated account recognized as an active
 admin by `isActiveAdmin()`.
 
 New customer profiles are created at `users/{uid}` by
-`lib/screens/register_screen.dart` with `name`, `email`, `phone`, `isActive`,
+`lib/screens/register_screen.dart` with `name`, `email`, `isActive`,
 `createdAt`, and `updatedAt`. The Settings screen listens to this document for
 web-managed name changes; profile-photo URLs are stored in both Firebase Auth
 and the `photoUrl` field. Mobile implementation:

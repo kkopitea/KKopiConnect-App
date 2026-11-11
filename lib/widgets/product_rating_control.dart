@@ -9,13 +9,11 @@ class ProductRatingControl extends StatelessWidget {
     required this.summary,
     required this.userRating,
     required this.onRate,
-    this.isSubmitting = false,
   });
 
   final ProductRatingSummary summary;
   final int? userRating;
   final ValueChanged<int> onRate;
-  final bool isSubmitting;
 
   @override
   Widget build(BuildContext context) {
@@ -35,14 +33,6 @@ class ProductRatingControl extends StatelessWidget {
               '(${summary.count} ${summary.count == 1 ? 'rating' : 'ratings'})',
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
-            if (isSubmitting) ...[
-              const SizedBox(width: 8),
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-              ),
-            ],
           ],
         ),
         const SizedBox(height: 4),
@@ -54,7 +44,7 @@ class ProductRatingControl extends StatelessWidget {
                 tooltip: userRating == null
                     ? 'Rate $star out of 5 stars'
                     : 'Change rating to $star out of 5 stars',
-                onPressed: isSubmitting ? null : () => onRate(star),
+                onPressed: () => onRate(star),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints.tightFor(

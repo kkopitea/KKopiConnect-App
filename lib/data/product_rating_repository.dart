@@ -14,6 +14,16 @@ class ProductRatingSummary {
   final int count;
   final int total;
 
+  ProductRatingSummary withRating(int? previousRating, int rating) {
+    final nextCount = count + (previousRating == null ? 1 : 0);
+    final nextTotal = total - (previousRating ?? 0) + rating;
+    return ProductRatingSummary(
+      average: nextTotal / nextCount,
+      count: nextCount,
+      total: nextTotal,
+    );
+  }
+
   factory ProductRatingSummary.fromData(Map<String, dynamic>? data) {
     final rawAverage = data?['ratingAverage'];
     final rawCount = data?['ratingCount'];

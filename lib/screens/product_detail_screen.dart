@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -34,7 +36,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _selectedPrice = 0;
   Stream<ProductRatingSummary>? _ratingSummaryStream;
   Stream<int?>? _userRatingStream;
-  bool _isSubmittingRating = false;
+  bool _isRatingWriteInProgress = false;
+  int? _queuedRating;
+  int? _optimisticUserRating;
+  ProductRatingSummary? _optimisticSummary;
+  ProductRatingSummary? _ratingBaselineSummary;
+  int? _ratingBaselineUserRating;
+  ProductRatingSummary? _latestSummary;
+  int? _latestUserRating;
+  bool _latestUserRatingLoaded = false;
+  Timer? _ratingSaveTimer;
 
   List<(String, int)> get _sizes => widget.product.availableSizes
       .map((size) => (size.$1, widget.product.price + size.$2))
@@ -61,6 +72,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   void dispose() {
+    _ratingSaveTimer?.cancel();
     if (Firebase.apps.isNotEmpty) {
       ProductRatingsStore.summaries.removeListener(_ratingsChanged);
     }
@@ -100,6 +112,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: CircularProgressIndicator.adaptive(strokeWidth: 2),
           );
         }
+        final serverSummary =
+            summarySnapshot.data ?? const ProductRatingSummary.empty();
+        _latestSummary = serverSummary;
         return StreamBuilder<int?>(
           stream: _userRatingStream,
           builder: (context, userRatingSnapshot) {
@@ -109,11 +124,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 style: TextStyle(color: AppColors.textMuted, fontSize: 11),
               );
             }
+            _latestUserRating = userRatingSnapshot.data;
+            _latestUserRatingLoaded =
+                userRatingSnapshot.connectionState != ConnectionState.waiting;
+            _clearOptimisticSummaryWhenConfirmed(
+              serverSummary,
+              userRatingSnapshot.data,
+            );
             return ProductRatingControl(
-              summary:
-                  summarySnapshot.data ?? const ProductRatingSummary.empty(),
-              userRating: userRatingSnapshot.data,
-              isSubmitting: _isSubmittingRating,
+              summary: _optimisticSummary ?? serverSummary,
+              userRating: _optimisticUserRating ?? userRatingSnapshot.data,
               onRate: _rateProduct,
             );
           },
@@ -123,8 +143,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _rateProduct(int rating) async {
-    if (_isSubmittingRating) return;
-    setState(() => _isSubmittingRating = true);
+    if (_ratingBaselineSummary == null && _latestUserRatingLoaded) {
+      _ratingBaselineSummary =
+          _latestSummary ?? ProductRatingsStore.summary(widget.product.id);
+      _ratingBaselineUserRating = _latestUserRating;
+    }
+    _queuedRating = rating;
+    if (mounted) {
+      setState(() {
+        _optimisticUserRating = rating;
+        final baseline = _ratingBaselineSummary;
+        if (baseline != null) {
+          _optimisticSummary = baseline.withRating(
+            _ratingBaselineUserRating,
+            rating,
+          );
+        }
+      });
+    }
+    _scheduleRatingSave();
+  }
+
+  void _clearOptimisticSummaryWhenConfirmed(
+    ProductRatingSummary serverSummary,
+    int? serverUserRating,
+  ) {
+    final optimistic = _optimisticSummary;
+    if (optimistic == null ||
+        optimistic.count != serverSummary.count ||
+        optimistic.total != serverSummary.total ||
+        serverUserRating != _optimisticUserRating) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _optimisticSummary?.count != optimistic.count ||
+          _optimisticSummary?.total != optimistic.total ||
+          _optimisticUserRating != serverUserRating) {
+        return;
+      }
+      setState(() {
+        _optimisticSummary = null;
+        _ratingBaselineSummary = null;
+        _ratingBaselineUserRating = null;
+      });
+    });
+  }
+
+  void _scheduleRatingSave() {
+    _ratingSaveTimer?.cancel();
+    _ratingSaveTimer = Timer(const Duration(milliseconds: 120), () {
+      unawaited(_saveQueuedRating());
+    });
+  }
+
+  Future<void> _saveQueuedRating() async {
+    if (_isRatingWriteInProgress) return;
+    final rating = _queuedRating;
+    if (rating == null) return;
+    _queuedRating = null;
+    _isRatingWriteInProgress = true;
     try {
       if (Firebase.apps.isEmpty) {
         throw StateError('Sign in to rate this product.');
@@ -132,19 +210,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       await ProductRatingsStore.setRating(widget.product.id, rating);
     } catch (error) {
       debugPrint('Unable to rate product: $error');
+      _queuedRating = null;
       if (mounted) {
+        setState(() {
+          _optimisticUserRating = null;
+          _optimisticSummary = null;
+          _ratingBaselineSummary = null;
+          _ratingBaselineUserRating = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               error is StateError
                   ? error.message.toString()
+                  : error is FirebaseException
+                  ? 'Could not save your rating (${error.code}). Please try again.'
                   : 'Could not save your rating. Please try again.',
             ),
           ),
         );
       }
     } finally {
-      if (mounted) setState(() => _isSubmittingRating = false);
+      _isRatingWriteInProgress = false;
+      if (_queuedRating != null) {
+        _scheduleRatingSave();
+      }
     }
   }
 

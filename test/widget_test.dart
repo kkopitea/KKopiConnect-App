@@ -21,6 +21,8 @@ import 'package:kkopiconnect_app/screens/order_confirmation_screen.dart';
 import 'package:kkopiconnect_app/screens/welcome_screen.dart';
 import 'package:kkopiconnect_app/screens/product_detail_screen.dart';
 import 'package:kkopiconnect_app/data/menu_catalog.dart';
+import 'package:kkopiconnect_app/data/drink_extra.dart';
+import 'package:kkopiconnect_app/data/advertisement.dart';
 import 'package:kkopiconnect_app/data/order_draft.dart';
 import 'package:kkopiconnect_app/data/payment_method.dart';
 import 'package:kkopiconnect_app/data/payment_method_repository.dart';
@@ -79,6 +81,22 @@ void main() {
         }).average,
         5,
       );
+      final updatedRating = const ProductRatingSummary(
+        average: 4.5,
+        count: 2,
+        total: 9,
+      ).withRating(5, 3);
+      expect(updatedRating.average, 3.5);
+      expect(updatedRating.count, 2);
+      expect(updatedRating.total, 7);
+
+      final firstRating = const ProductRatingSummary.empty().withRating(
+        null,
+        3,
+      );
+      expect(firstRating.average, 3);
+      expect(firstRating.count, 1);
+      expect(firstRating.total, 3);
 
       ProductRatingsStore.summaries.value = const {};
       FavoritesStore.productIds.value = const {};
@@ -153,6 +171,24 @@ void main() {
     expect(find.text('Your rating: 4/5'), findsOneWidget);
     await tester.tap(find.byTooltip('Change rating to 2 out of 5 stars'));
     expect(selectedRating, 2);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProductRatingControl(
+            summary: const ProductRatingSummary(
+              average: 3.5,
+              count: 2,
+              total: 7,
+            ),
+            userRating: 2,
+            onRate: (rating) => selectedRating = rating,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Change rating to 5 out of 5 stars'));
+    expect(selectedRating, 5);
   });
 
   testWidgets('login screen offers guest access without registration', (
@@ -358,6 +394,94 @@ void main() {
     expect(find.text('Best Selling'), findsOneWidget);
     expect(find.text('All Products'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home screen refreshes when pulled down', (tester) async {
+    var refreshCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          onSeeAllCategories: () {},
+          onRefresh: () async {
+            refreshCount++;
+          },
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 400));
+    await tester.pumpAndSettle();
+
+    expect(refreshCount, 1);
+  });
+
+  testWidgets('tapping an ad opens its first linked product directly', (
+    tester,
+  ) async {
+    final firstProduct = menuProducts.first;
+    final linkedProduct = menuProducts[1];
+    final advertisement = Advertisement(
+      id: 'linked-products',
+      title: 'Linked products',
+      eyebrow: '',
+      description: '',
+      buttonLabel: '',
+      imageUrl: '',
+      isActive: true,
+      sortOrder: 1,
+      productId: linkedProduct.id,
+      productIds: [firstProduct.id, menuProducts[1].id],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          onSeeAllCategories: () {},
+          advertisements: Stream.value([advertisement]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byType(PageView).first));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProductDetailScreen), findsOneWidget);
+    expect(find.text(linkedProduct.name), findsWidgets);
+    expect(find.byType(BottomSheet), findsNothing);
+  });
+
+  testWidgets('tapping an ad opens its first linked product directly', (
+    tester,
+  ) async {
+    final firstProduct = menuProducts.first;
+    final secondProduct = menuProducts[1];
+    final advertisement = Advertisement(
+      id: 'linked-products',
+      title: 'Linked products',
+      eyebrow: '',
+      description: '',
+      buttonLabel: '',
+      imageUrl: '',
+      isActive: true,
+      sortOrder: 1,
+      productIds: [firstProduct.id, secondProduct.id],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          onSeeAllCategories: () {},
+          advertisements: Stream.value([advertisement]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byType(PageView).first));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProductDetailScreen), findsOneWidget);
+    expect(find.text(firstProduct.name), findsWidgets);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('chat assistant answers menu price questions', (tester) async {
@@ -576,7 +700,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final fruitTea = menuProducts.firstWhere(
-      (product) => product.categoryIds.contains('fruit_tea'),
+      (product) => product.categoryIds.contains('fruit_teas'),
     );
     expect(find.text(fruitTea.name), findsOneWidget);
     expect(find.text(fruitTea.description), findsOneWidget);
@@ -746,6 +870,80 @@ void main() {
     await tester.pumpAndSettle();
     expect(CartStore.items.value.single.addIns, isEmpty);
     expect(CartStore.items.value.single.addOns, isEmpty);
+    CartStore.clear();
+  });
+
+  testWidgets(
+    'Non Caffeine drinks show admin-managed add-ons and charge them',
+    (WidgetTester tester) async {
+      final product = menuProducts.firstWhere(
+        (item) => item.categoryIds.contains('non_caffeine'),
+      );
+      CartStore.clear();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CustomizeDrinkScreen(
+            draft: OrderDraft(product: product),
+            addOnOptions: Stream.value([
+              const DrinkExtra(id: 'pearls', name: 'Pearls', price: 20),
+            ]),
+            onNavigateTab: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2. Add-ons'), findsOneWidget);
+      final addOn = find.text('Pearls · ₱20');
+      await tester.ensureVisible(addOn);
+      await tester.tap(addOn);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('₱${product.price + 20}'), findsWidgets);
+      await tester.tap(find.textContaining('Add to cart'));
+      await tester.pumpAndSettle();
+
+      expect(CartStore.items.value.single.addOns, {'Pearls'});
+      expect(CartStore.items.value.single.addOnUnitPrices, {'Pearls': 20});
+      expect(CartStore.items.value.single.total, product.price + 20);
+      CartStore.clear();
+    },
+  );
+
+  testWidgets('product-specific admin add-ons show for Burat ni Jian', (
+    WidgetTester tester,
+  ) async {
+    final product = MenuProduct.fromFirestore('burat-ni-jian', {
+      'name': 'BURAT NI JIAN',
+      'categoryId': 'icedlattes',
+      'basePrice': 120,
+      'isAvailable': true,
+      'addons': [
+        {'name': 'Pearl', 'price': 10},
+      ],
+    })!;
+    CartStore.clear();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CustomizeDrinkScreen(draft: OrderDraft(product: product)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2. Add-ons'), findsOneWidget);
+    final pearlAddOn = find.text('Pearl · ₱10');
+    await tester.ensureVisible(pearlAddOn);
+    await tester.tap(pearlAddOn);
+    await tester.pumpAndSettle();
+    expect(find.text('₱130'), findsOneWidget);
+
+    await tester.tap(find.textContaining('Add to cart'));
+    await tester.pumpAndSettle();
+    expect(CartStore.items.value.single.addOns, {'Pearl'});
+    expect(CartStore.items.value.single.addOnUnitPrices, {'Pearl': 10});
+    expect(CartStore.items.value.single.total, 130);
     CartStore.clear();
   });
 

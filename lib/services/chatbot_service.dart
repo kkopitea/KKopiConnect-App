@@ -217,7 +217,7 @@ class MenuAssistantKnowledge {
       if (items.isEmpty) {
         return 'There are no products currently marked as best sellers.';
       }
-      return 'Our best sellers are: ${_formatProducts(items)}.';
+      return 'Our best sellers are: ${_formatBestSellerProducts(items)}.';
     }
 
     if (_containsAny(text, [
@@ -232,11 +232,20 @@ class MenuAssistantKnowledge {
           : 'New on the menu: ${_formatProducts(items)}.';
     }
 
-    final category = menuCategories.where(
-      (item) =>
-          text.contains(_normalize(item.name)) ||
-          text.contains(_normalize(item.id.replaceAll('_', ' '))),
-    );
+    final category = menuCategories.where((item) {
+      final name = _normalize(item.name);
+      final categoryId = _normalize(item.id.replaceAll('_', ' '));
+      final singularName = name.endsWith('s')
+          ? name.substring(0, name.length - 1)
+          : name;
+      final singularId = categoryId.endsWith('s')
+          ? categoryId.substring(0, categoryId.length - 1)
+          : categoryId;
+      return text.contains(name) ||
+          text.contains(singularName) ||
+          text.contains(categoryId) ||
+          text.contains(singularId);
+    });
     if (category.isNotEmpty &&
         (_containsAny(text, [
               'what',
@@ -319,6 +328,11 @@ class MenuAssistantKnowledge {
   static String _formatProducts(List<MenuProduct> products) => products
       .map((product) => '${product.name} (₱${product.price})')
       .join(', ');
+
+  static String _formatBestSellerProducts(List<MenuProduct> products) =>
+      products
+          .map((product) => '**${product.name}** (₱${product.price})')
+          .join(', ');
 
   static bool _containsAny(String text, List<String> phrases) =>
       phrases.any((phrase) => text.contains(phrase));

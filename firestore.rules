@@ -31,9 +31,68 @@ service cloud.firestore {
       return /databases/$(database)/documents/productRatings/$(productId)/users/$(uid);
     }
 
+    function validNotification(data) {
+      return data.keys().hasAll(['title', 'message', 'type', 'isActive'])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 128
+        && data.message is string
+        && data.message.size() > 0
+        && data.message.size() <= 2000
+        && data.type in ['Promotion', 'System']
+        && data.isActive is bool
+        && (!('imageUrl' in data)
+          || (data.imageUrl is string && data.imageUrl.size() <= 2048))
+        && (!('version' in data)
+          || (data.version is string && data.version.size() <= 50));
+    }
+
     match /admins/{userId} {
       allow read: if (request.auth != null && request.auth.uid == userId) || isActiveAdmin();
-      allow write: if false;
+
+      allow create: if isActiveAdmin()
+        && request.resource.data.keys().hasAll([
+          'uid',
+          'name',
+          'email',
+          'role',
+          'status',
+          'active',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'name',
+          'email',
+          'role',
+          'status',
+          'active',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == userId
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.role in [
+          'Administrator',
+          'Manager',
+          'Staff'
+        ]
+        && request.resource.data.status in [
+          'active',
+          'inactive'
+        ]
+        && request.resource.data.active is bool
+        && request.resource.data.isActive is bool
+        && request.resource.data.active == (request.resource.data.status == 'active')
+        && request.resource.data.isActive == request.resource.data.active
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow update, delete: if false;
     }
 
     match /users/{uid} {
@@ -41,22 +100,19 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
-          'name', 'email', 'phone', 'isActive', 'photoUrl',
+          'name', 'email', 'isActive', 'photoUrl',
           'createdAt', 'updatedAt'
         ])
         && request.resource.data.name is string
         && request.resource.data.email is string
-        && request.resource.data.phone is string
         && request.resource.data.isActive == true;
       allow update: if isActiveAdmin() || (
         signedIn()
           && request.auth.uid == uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'phone', 'photoUrl', 'updatedAt'])
+            .hasOnly(['name', 'photoUrl', 'updatedAt'])
           && (!('name' in request.resource.data)
             || request.resource.data.name is string)
-          && (!('phone' in request.resource.data)
-            || request.resource.data.phone is string)
           && (!('photoUrl' in request.resource.data)
             || request.resource.data.photoUrl is string)
       );
@@ -66,9 +122,25 @@ service cloud.firestore {
         allow read: if signedIn() && request.auth.uid == uid;
         allow create, update: if signedIn()
           && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['isRead', 'updatedAt'])
-          && request.resource.data.isRead == true;
+          && request.resource.data.keys().hasOnly([
+            'isRead', 'isDismissed', 'updatedAt'
+          ])
+          && request.resource.data.isRead == true
+          && (!('isDismissed' in request.resource.data)
+            || request.resource.data.isDismissed == true);
         allow delete: if false;
+      }
+
+      match /fcmTokens/{tokenId} {
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly([
+            'token', 'platform', 'updatedAt'
+          ])
+          && request.resource.data.token == tokenId
+          && request.resource.data.platform in ['android', 'iOS']
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if signedIn() && request.auth.uid == uid;
       }
 
       match /favoriteProducts/{productId} {
@@ -135,9 +207,16 @@ service cloud.firestore {
       allow write: if isActiveAdmin();
     }
 
+    match /promotions/{promotionId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isActiveAdmin();
+    }
+
     match /notifications/{notificationId} {
       allow read: if signedIn();
-      allow write: if isActiveAdmin();
+      allow create, update: if isActiveAdmin()
+        && validNotification(request.resource.data);
+      allow delete: if isActiveAdmin();
     }
 
     match /drinkAddIns/{optionId} {
@@ -255,9 +334,13 @@ service cloud.firestore {
           >= request.resource.data.ratingCount
         && request.resource.data.ratingTotal
           <= request.resource.data.ratingCount * 5
+        && request.resource.data.ratingAverage is number
         && request.resource.data.ratingAverage
-          == request.resource.data.ratingTotal
-            / request.resource.data.ratingCount
+          >= request.resource.data.ratingTotal
+            / request.resource.data.ratingCount - 0.000001
+        && request.resource.data.ratingAverage
+          <= request.resource.data.ratingTotal
+            / request.resource.data.ratingCount + 0.000001
         && existsAfter(ratingPath(productId, request.auth.uid))
         && getAfter(ratingPath(productId, request.auth.uid)).data.rating >= 1
         && getAfter(ratingPath(productId, request.auth.uid)).data.rating <= 5
