@@ -306,9 +306,12 @@ service cloud.firestore {
 
     match /productRatings/{productId} {
       function storedRatingTotal(data) {
-        return data.ratingTotal is int
+        return ('ratingTotal' in data && data.ratingTotal is int)
           ? data.ratingTotal
-          : data.ratingAverage is number && data.ratingCount is int
+          : ('ratingAverage' in data
+              && data.ratingAverage is number
+              && 'ratingCount' in data
+              && data.ratingCount is int)
             ? data.ratingAverage * data.ratingCount
             : -1;
       }
