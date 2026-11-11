@@ -32,13 +32,19 @@ class ProductRatingSummary {
     final average = rawAverage is num
         ? rawAverage.toDouble().clamp(0, 5).toDouble()
         : 0.0;
-    final total = rawTotal is num ? rawTotal.toInt() : 0;
+    final total = rawTotal is num
+        ? rawTotal.toInt()
+        : rawAverage is num
+        ? (rawAverage.toDouble() * count).round()
+        : 0;
     if (count <= 0 || total < count || total > count * 5) {
       return const ProductRatingSummary.empty();
     }
     final expectedAverage = total / count;
     if (rawAverage is! num ||
-        (rawAverage.toDouble() - expectedAverage).abs() > 0.000001) {
+        (rawAverage.toDouble() - expectedAverage).abs() > 0.000001 ||
+        (rawTotal is! num &&
+            (rawAverage.toDouble() * count - total).abs() > 0.000001)) {
       return const ProductRatingSummary.empty();
     }
     return ProductRatingSummary(average: average, count: count, total: total);
@@ -87,8 +93,14 @@ class ProductRatingRepository {
       final summarySnapshot = await transaction.get(summary);
       final userRatingSnapshot = await transaction.get(userRating);
       final data = summarySnapshot.data();
-      final oldCount = (data?['ratingCount'] as num?)?.toInt() ?? 0;
-      final oldTotal = (data?['ratingTotal'] as num?)?.toInt() ?? 0;
+      final existingSummary = ProductRatingSummary.fromData(data);
+      if (summarySnapshot.exists && existingSummary.count == 0) {
+        throw StateError(
+          'The product rating summary is out of sync. Please try again later.',
+        );
+      }
+      final oldCount = existingSummary.count;
+      final oldTotal = existingSummary.total;
       final previousRating = (userRatingSnapshot.data()?['rating'] as num?)
           ?.toInt();
       if (previousRating == rating) return;

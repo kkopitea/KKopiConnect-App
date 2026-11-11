@@ -81,6 +81,12 @@ void main() {
         }).average,
         5,
       );
+      final legacySummary = ProductRatingSummary.fromData({
+        'ratingAverage': 4.5,
+        'ratingCount': 2,
+      });
+      expect(legacySummary.total, 9);
+      expect(legacySummary.average, 4.5);
       final updatedRating = const ProductRatingSummary(
         average: 4.5,
         count: 2,
